@@ -1,0 +1,41 @@
+# 本工程在 Windows 上开发、在 Linux(ROS) 上运行。
+# 强制源码用 LF 检出，避免 shell 脚本出现 "bad interpreter: ^M"。
+
+* text=auto eol=lf
+
+*.sh      text eol=lf
+*.bash    text eol=lf
+*.py      text eol=lf
+*.launch  text eol=lf
+*.xml     text eol=lf
+*.yaml    text eol=lf
+*.yml     text eol=lf
+*.msg     text eol=lf
+*.srv     text eol=lf
+*.urdf    text eol=lf
+*.xacro   text eol=lf
+*.cpp     text eol=lf
+*.hpp     text eol=lf
+*.h       text eol=lf
+*.lua     text eol=lf
+*.cfg     text eol=lf
+*.rviz    text eol=lf
+
+# 二进制资源：不做换行转换，不参与文本 diff
+*.pgm     binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.stl     binary
+*.STL     binary
+*.dae     binary
+*.ttf     binary
+*.ttc     binary
+*.otf     binary
+*.pt      binary
+*.pth     binary
+*.bin     binary
+*.onnx    binary
+*.wav     binary
+*.mp3     binary
+*.ipynb   binary

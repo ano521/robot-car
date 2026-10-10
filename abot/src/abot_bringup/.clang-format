@@ -1,0 +1,38 @@
+---
+BasedOnStyle: Google
+IndentWidth: 2
+ColumnLimit: 150
+---
+Language: Cpp
+# Force pointers to the type for C++.
+DerivePointerAlignment: false
+PointerAlignment: Left
+SortIncludes: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLambdasOnASingleLine: true
+AllowShortLoopsOnASingleLine: false
+AlignAfterOpenBracket: true
+BinPackParameters: false
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BreakConstructorInitializers: BeforeComma
+
+BreakBeforeBinaryOperators: false
+
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 1000
+PenaltyBreakString: 1
+PenaltyBreakFirstLessLess: 1000
+PenaltyBreakAssignment: 1000
+
+AllowAllArgumentsOnNextLine: false
+ConstructorInitializerIndentWidth: 2
+---
+Language: Proto
+# Don't format .proto files.
+DisableFormat: false
+IndentWidth: 2

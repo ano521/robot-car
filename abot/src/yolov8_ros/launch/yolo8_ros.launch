@@ -1,0 +1,4 @@
+<launch>
+<node name="yolov8_ros_node" pkg="yolov8_ros" type="yolo_detect.py" output="screen"/>
+<include file="$(find yolov8_ros)/launch/usb_cam.launch"/>
+</launch>

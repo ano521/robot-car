@@ -1,0 +1,7 @@
+<launch>
+<arg name="input_image" default="/home/abot/abot_ws/src/ocr_detect/image/11.jpg"/>
+<node name="ocr_node" pkg="ocr_detect" type="ocr.py" output="screen"/>
+	<param name="image_path" value="$(arg input_image)" />
+	<!--<param name="take_photo" type="bool" value="False" />-->
+<!--<include file="$(find yolov8_ros)/launch/usb_cam.launch"/>-->
+</launch>

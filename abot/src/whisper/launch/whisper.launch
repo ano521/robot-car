@@ -1,0 +1,4 @@
+<launch>
+    <!-- 启动 whisper.py 脚本 -->
+    <node name="audio_subscriber" pkg="whisper" type="whisper.py" output="screen"/>
+</launch>

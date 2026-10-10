@@ -1,0 +1,25 @@
+# 机械臂键盘控制默认参数配置
+# 这些参数可以通过rqt_reconfigure动态调整
+
+# 机械臂位置控制参数 (毫米)
+kms_x: 0.0      # X坐标
+kms_y: 150.0    # Y坐标 
+kms_z: 20.0     # Z高度
+
+# 舵机控制参数 (PWM值)
+servo_yuntai: 1500    # 云台舵机
+servo_zhuazi: 1500    # 爪子舵机
+
+# 运动时间参数 (毫秒)
+move_time: 2000
+
+# 动作触发器
+trigger_action: false     # 触发抓取动作
+reset_position: false     # 重置到初始位置
+
+# 爪子控制
+gripper_open: false       # 张开爪子
+gripper_close: false      # 闭合爪子
+
+# 调试模式
+debug_mode: false         # 调试模式开关

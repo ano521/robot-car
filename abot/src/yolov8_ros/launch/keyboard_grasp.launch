@@ -1,0 +1,8 @@
+<launch>
+    <!-- 启动keyboard_grasp节点，支持rqt_reconfigure动态参数配置 -->
+    <node pkg="yolov8_ros" type="keyboard_grasp.py" name="keyboard_grasp_node" output="screen" />
+    
+    <!-- 可选：自动启动rqt_reconfigure GUI -->
+    <!-- 取消注释以自动启动参数配置界面 -->
+    <!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="dynamic_reconfigure_gui" /> -->
+</launch>

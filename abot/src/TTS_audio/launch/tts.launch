@@ -1,0 +1,6 @@
+<launch>
+<!-- 启动TTS模型推理节点 -->
+<node pkg="TTS_audio" type="tts.py" name="tts_node" output="screen" launch-prefix="gnome-terminal --tab --command"/>
+<!-- 启动TTS消息发布节点 -->
+<node pkg="TTS_audio" type="pub_tts.py" name="pub_tts_node" output="screen" launch-prefix="gnome-terminal --tab --command"/>
+</launch>

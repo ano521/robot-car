@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: arm5
+    relative_path: urdf/test.urdf
+    xacro_args: ""
+  SRDF:
+    relative_path: config/arm5.srdf
+  CONFIG:
+    author_name: wcxc_arm
+    author_email: 309738513@qq.com
+    generated_timestamp: 1717748939

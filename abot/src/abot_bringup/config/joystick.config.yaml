@@ -1,0 +1,10 @@
+axis_linear: 1          # 遥感索引1的值表示控制linear     索引rostopic echo joy可以看出axes数字
+scale_linear: 0.7       # 低速运动linear最大值
+scale_linear_turbo: 1.5 # 高度速运动linear最大值
+
+axis_angular: 0         # 遥感索引0的表示angular方向
+scale_angular: 0.4      # 低速运动angular最大值
+scale_angular_turbo: 0.8 # 高度速运动angular最大值
+
+enable_button: 0        # 实现低速运动使能键
+enable_turbo_button: 1  # 实现高速度运动使能键

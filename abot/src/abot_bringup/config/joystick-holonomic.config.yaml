@@ -1,0 +1,15 @@
+axis_linear:
+  x: 1                  # 遥感索引1的值表示控制linear的x方向(前进后退)
+  y: 0                  # 遥感索引0的值表示控制linear的y方向(左右平移)
+scale_linear:
+  x: 0.20               # 低速运动linear x最大值
+  y: 0.20               # 低速运动linear y最大值
+
+axis_angular:
+  yaw: 3                # 遥感索引3的值表示控制angular(旋转)
+scale_angular:          
+  yaw: 1                # 低速运动angular最大值
+
+enable_button: 0        # 实现低速运动使能键
+enable_turbo_button: -1 # 实现高速度运动使能键
+

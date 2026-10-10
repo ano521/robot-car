@@ -1,0 +1,67 @@
+# ================= ROS / catkin 编译产物 =================
+build/
+devel/
+install/
+log/
+logs/
+.catkin_workspace
+CATKIN_IGNORE
+*.pc
+
+# ================= Python =================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ================= 模型权重与二进制 =================
+# 体积过大（单文件可达 840M），请从 ModelScope / 官方渠道自行下载
+*.pt
+*.pth
+*.bin
+*.onnx
+*.ckpt
+*.h5
+*.tflite
+*.pb
+*.mvn
+seg_dict
+
+# ================= 字体（专有授权，不可再分发） =================
+*.ttf
+*.ttc
+*.otf
+
+# ================= 压缩包 =================
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.whl
+*.rar
+*.7z
+
+# ================= 运行输出 =================
+abot/src/TTS_audio/output/
+abot/src/ocr_detect/result/
+
+# ================= 工具 / 智能体状态 =================
+.claude-forge/
+.concinno_cache/
+
+# ================= 密钥与凭据 =================
+.env
+.env.*
+*.key
+*.pem
+*credentials*
+*secret*
+
+# ================= 编辑器 / 系统 =================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*（复件）*

@@ -1,0 +1,8 @@
+<launch>
+  <node name='follower' pkg="lidar_follower" type="follower.py" output="screen">
+    <param name='maxSpeed' value='0.4' type='double' />
+    <param name='targetDist' value='0.6' type='double' />
+    <rosparam ns='PID_controller' command='load' file='$(find lidar_follower)/config/PID_param.yaml' />
+  </node>
+</launch>
+

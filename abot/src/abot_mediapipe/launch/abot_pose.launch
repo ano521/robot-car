@@ -1,0 +1,7 @@
+<launch>
+	<arg name="input_image" default="/usb_cam/image_raw"/>
+	<include file="$(find yolov8_ros)/launch/usb_cam.launch"/>
+  <node name="abot_pose" pkg="abot_mediapipe" type="pose.py" output="screen" >
+      <param name="camera_topic" value="$(arg input_image)" type="string" />
+  </node>
+</launch>

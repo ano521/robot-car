@@ -1,0 +1,4 @@
+<launch>
+    <!-- 启动 audio.py 脚本 -->
+    <node name="audio_node" pkg="robot_audio" type="audio.py" output="screen"/>
+</launch>
