@@ -13,7 +13,7 @@ class YOLONode:
         rospy.init_node('sam_node', anonymous=True)
         
         # 加载模型
-        self.model = YOLO("/home/abot/abot/src/sam/model/seg.pt")  # 分割模型
+        self.model = YOLO("/media/abot/999/abot/src/sam/model/seg.pt")  # 分割模型
         self.names = self.model.model.names
         
         # 初始化cv_bridge

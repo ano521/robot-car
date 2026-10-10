@@ -15,8 +15,8 @@ class FaceDetector(ROS2OPENCV):
         self.detect_box = None
         self.result = None
         self.count = 0
-        self.face_cascade = cv2.CascadeClassifier('/home/abot/abot_ws/src/face_pkg/scripts/cascades/haarcascade_frontalface_default.xml')
-        self.dirname = "/home/abot/abot_ws/src/face_pkg/scripts/data/jackchen/"
+        self.face_cascade = cv2.CascadeClassifier('/media/abot/999/abot/src/face_pkg/scripts/cascades/haarcascade_frontalface_default.xml')
+        self.dirname = "/media/abot/999/abot/src/face_pkg/scripts/data/jackchen/"
         if (not os.path.isdir(self.dirname)):
             os.makedirs(self.dirname)
     

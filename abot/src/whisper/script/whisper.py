@@ -7,8 +7,8 @@ import wave
 import os
 from faster_whisper import WhisperModel
 from std_msgs.msg import String
-music_path="/home/abot/abot/src/whisper/mp3/start_record.mp3"
-music1_path="/home/abot/abot/src/whisper/mp3/end_record.mp3"
+music_path="/media/abot/999/abot/src/whisper/mp3/start_record.mp3"
+music1_path="/media/abot/999/abot/src/whisper/mp3/end_record.mp3"
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 def audio_callback(msg):
@@ -16,7 +16,7 @@ def audio_callback(msg):
     start_audio()
     rospy.loginfo("Recording and recognition completed")
 
-def start_audio(time=5, save_file="/home/abot/abot/src/whisper/mp3/test.wav"):
+def start_audio(time=5, save_file="/media/abot/999/abot/src/whisper/mp3/test.wav"):
     CHUNK = 1024
     FORMAT = pyaudio.paInt16
     CHANNELS = 2
@@ -54,9 +54,9 @@ def start_audio(time=5, save_file="/home/abot/abot/src/whisper/mp3/test.wav"):
     wf.close()
 
     rospy.loginfo("Starting recognition")
-    model_size = "/home/abot/abot/src/whisper/whisper-tiny-zh-ct2-int8"
+    model_size = "/media/abot/999/abot/src/whisper/whisper-tiny-zh-ct2-int8"
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    segments, info = model.transcribe("/home/abot/abot/src/whisper/mp3/test.wav", beam_size=5, language='zh')
+    segments, info = model.transcribe("/media/abot/999/abot/src/whisper/mp3/test.wav", beam_size=5, language='zh')
 
     rospy.loginfo("Detected language '%s' with probability %f", info.language, info.language_probability)
 

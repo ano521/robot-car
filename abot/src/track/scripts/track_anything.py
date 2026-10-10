@@ -13,7 +13,7 @@ rospy.init_node('tracker_node')
 bridge = CvBridge()
 
 # 加载模型
-model = YOLO("/home/abot/abot/src/track/model/track.pt")
+model = YOLO("/media/abot/999/abot/src/track/model/track.pt")
 
 # 创建发布者，发布追踪结果图像
 track_result_pub = rospy.Publisher('/track_result', Image, queue_size=10)

@@ -33,13 +33,13 @@ def read_images(path, sz=None):
     return [names, X, y]
 
 def face_rec():
-    read_dir = "/home/abot/abot_ws/src/face_pkg/scripts/data"
+    read_dir = "/media/abot/999/abot/src/face_pkg/scripts/data"
     [names, X, y] = read_images(read_dir)
     y = np.asarray(y, dtype=np.int32)
     model = cv2.face_EigenFaceRecognizer.create()
     model.train(np.asarray(X), np.asarray(y))
     
-    face_cascade = cv2.CascadeClassifier('/home/abot/abot_ws/src/face_pkg/scripts/cascades/haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier('/media/abot/999/abot/src/face_pkg/scripts/cascades/haarcascade_frontalface_default.xml')
     cap = cv2.VideoCapture(0)
     while True:
         ret, frame = cap.read()

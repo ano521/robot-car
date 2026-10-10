@@ -36,7 +36,7 @@ def Draw_OCRResult(blank_img, pt1, pt2, text):
     
     draw = ImageDraw.Draw(blank_img)
     draw.rectangle([pt1, pt2], outline=(255, 255, 0), width=3)
-    fontStyle = ImageFont.truetype("/home/abot/abot/src/ocr_detect/ChineseFonts/simsun.ttc", size=21, encoding="utf-8")
+    fontStyle = ImageFont.truetype("/media/abot/999/abot/src/ocr_detect/ChineseFonts/simsun.ttc", size=21, encoding="utf-8")
     (x, y) = pt1
     draw.text((x+5, y+5), text=text, fill=(0, 0, 0), font=fontStyle)
     blank_img = np.asarray(blank_img)
@@ -44,7 +44,7 @@ def Draw_OCRResult(blank_img, pt1, pt2, text):
 
 def ocr_detect():
     rospy.init_node('ocr_detect', anonymous=True)
-    img_path = rospy.get_param('image_path', "/home/abot/abot/src/ocr_detect/image/11.jpg")
+    img_path = rospy.get_param('image_path', "/media/abot/999/abot/src/ocr_detect/image/11.jpg")
     
     while not rospy.is_shutdown():
         im = cv2.imread(img_path)
@@ -74,7 +74,7 @@ def ocr_detect():
         # 提取文件名部分
         base_name = os.path.basename(img_path)
         file_name, _ = os.path.splitext(base_name)
-        save_path = f'/home/abot/abot/src/ocr_detect/result/OCR_result_{file_name}.jpg'
+        save_path = f'/media/abot/999/abot/src/ocr_detect/result/OCR_result_{file_name}.jpg'
         cv2.imwrite(save_path, images)
         
         # 等待新的图片路径更新

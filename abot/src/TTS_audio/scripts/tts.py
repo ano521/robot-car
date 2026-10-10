@@ -14,8 +14,8 @@ def text_callback(msg):
     global chat, params_infer_code
     texts = [msg.data]
     wavs = chat.infer(texts, params_infer_code=params_infer_code)
-    torchaudio.save("/home/abot/abot_ws/src/TTS_audio/output/output_d1.wav", torch.from_numpy(wavs[0]), 24000)
-    os.system('mplayer %s' % "/home/abot/abot_ws/src/TTS_audio/output/output_d1.wav")
+    torchaudio.save("/media/abot/999/abot/src/TTS_audio/output/output_d1.wav", torch.from_numpy(wavs[0]), 24000)
+    os.system('mplayer %s' % "/media/abot/999/abot/src/TTS_audio/output/output_d1.wav")
 
 def main():
     global chat, params_infer_code
@@ -26,7 +26,7 @@ def main():
     # 初始化ChatTTS
     chat = ChatTTS.Chat()
     chat.load_models(compile=False)  # 设置为False获得更快速度，设置为True获得更佳效果
-    speaker = torch.load('/home/abot/abot_ws/src/TTS_audio/speaker/speaker_5_girl.pth', map_location=torch.device('cpu'))
+    speaker = torch.load('/media/abot/999/abot/src/TTS_audio/speaker/speaker_5_girl.pth', map_location=torch.device('cpu'))
 
     params_infer_code = {
         'spk_emb': speaker,  # 讲话人

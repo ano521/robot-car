@@ -103,9 +103,19 @@ if __name__ == "__main__":
     # 创建一个话题发布者，发布名为 'goto_goal' 的话题
     goal_pub = rospy.Publisher('goto_goal', Float32MultiArray, queue_size=10)
     rospy.loginfo("setting dynamic parameters ")
-    local_obstacle_client.update_configuration({"enabled": 0})
-    global_static_client.update_configuration({"enabled": 0})
-    local_inf_client.update_configuration({"enabled": 0})
+    # ------------------------------------------------------------------
+    # 【2026-10-10 修改 · 安全】下面三行原本是打开的。它们会把 move_base 的
+    #   局部代价地图 · 障碍物层  (local_costmap/obstacle_layer)
+    #   全局代价地图 · 静态地图层(global_costmap/static_layer)
+    #   局部代价地图 · 膨胀层    (local_costmap/inflation_layer)
+    # 全部设成 enabled=0 —— 代价地图里不再有任何障碍物，规划出来的路径会
+    # 直接穿墙、紧贴墙走。而 3-amcl_test.sh 默认就会启动本节点。
+    # 这是"看起来能用、实际会撞车"的隐患，故注释掉。
+    # 如需恢复厂商原行为，把下面三行的 # 去掉即可。
+    # ------------------------------------------------------------------
+    # local_obstacle_client.update_configuration({"enabled": 0})
+    # global_static_client.update_configuration({"enabled": 0})
+    # local_inf_client.update_configuration({"enabled": 0})
     while not rospy.is_shutdown():
         # 从终端获取输入
         x = float(input("Enter x: "))

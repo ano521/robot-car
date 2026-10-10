@@ -65,3 +65,8 @@ abot/src/ocr_detect/result/
 Thumbs.db
 desktop.ini
 *（复件）*
+
+# ================= 手工备份文件 =================
+# 改脚本前留的 .bak / .bak2 不要入库
+*.bak
+*.bak[0-9]

@@ -7,8 +7,8 @@ import os
 from funasr import AutoModel
 import soundfile
 from std_msgs.msg import String
-music_path="/home/abot/abot/src/robot_audio/music/start_record.mp3"
-music1_path="/home/abot/abot/src/robot_audio/music/end_record.mp3"
+music_path="/media/abot/999/abot/src/robot_audio/music/start_record.mp3"
+music1_path="/media/abot/999/abot/src/robot_audio/music/end_record.mp3"
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 def audio_callback(msg):
@@ -16,7 +16,7 @@ def audio_callback(msg):
     start_audio()
     rospy.loginfo("Recording and recognition completed")
 
-def start_audio(time=5, save_file="/home/abot/abot/src/robot_audio/scripts/test.wav"):
+def start_audio(time=5, save_file="/media/abot/999/abot/src/robot_audio/scripts/test.wav"):
     global model
     CHUNK = 1024
     FORMAT = pyaudio.paInt16
@@ -55,7 +55,7 @@ def start_audio(time=5, save_file="/home/abot/abot/src/robot_audio/scripts/test.
     wf.close()
 
     rospy.loginfo("Starting recognition")
-    res = model.generate(input="/home/abot/abot/src/robot_audio/scripts/test.wav")
+    res = model.generate(input="/media/abot/999/abot/src/robot_audio/scripts/test.wav")
     
     result = res[0].get('text','默认值')
     print(result)  
@@ -87,6 +87,6 @@ def audio_subscriber():
     rospy.spin()
 
 if __name__ == '__main__':
-    model = AutoModel(model="/home/abot/abot/src/robot_audio/paraformer-zh",disable_update=True)
+    model = AutoModel(model="/media/abot/999/abot/src/robot_audio/paraformer-zh",disable_update=True)
     audio_subscriber()
     

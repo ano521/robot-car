@@ -54,7 +54,7 @@
 处理方式：把它们的 `.git` 目录**移出**（未删除，可逆）到：
 
 ```
-C:\Users\lenovo\Desktop\robot-car-nested-git-backup\
+D:\robot-car-backup\robot-car-nested-git-backup\
     ├── abot_bringup.git      ← 上游 gitee.com/pibot/pibot_bringup (master)
     └── abot_mediapipe.git    ← 上游 gitee.com/rikibot/rikibot_mediapipe (abot 分支)
 ```
@@ -62,7 +62,7 @@ C:\Users\lenovo\Desktop\robot-car-nested-git-backup\
 移动后两者成为普通源码目录，本地改动完整保留并已进入 GitHub。
 
 - **想恢复独立仓库**（例如再 pull 上游）：把对应 `.git` 移回原目录
-- **想彻底放弃嵌套历史**：删掉桌面备份目录
+- **想彻底放弃嵌套历史**：删掉 `D:\robot-car-backup\` 下的备份目录
 
 ⚠️ 现在这两个包**不能**再 `git pull` 上游，因为本仓库里它们是普通文件。
 
@@ -84,7 +84,7 @@ C:\Users\lenovo\Desktop\robot-car-nested-git-backup\
 
 厂商教学手册《移动抓取机器人》（万创鑫诚，ABOT-M1-ATK，148 页）：
 原文件 `C:\Users\lenovo\Downloads\移动抓取机器人.pdf`，
-已渲染的页面图在 `C:\Users\lenovo\Desktop\robot-car-ref\pages\`，
+已渲染的页面图在 `D:\robot-car-backup\robot-car-ref\pages\`，
 章节与包的对应关系见仓库内 [`docs/手册索引.md`](docs/手册索引.md)。
 
 **定位：代码以本仓库为准，手册只做参考。** 手册的工作区路径（`~/abot_ws/`）

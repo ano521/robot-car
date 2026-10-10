@@ -34,8 +34,8 @@ SYSTEM_PROMPT = """
 class VLM:
     def __init__(self):
         self.sub = rospy.Subscriber('/usb_cam/image_raw', ROSImage, self.top_view_shot)
-        self.image_path = '/home/abot/abot/src/vl_locate/image/vlm_now.jpg'
-        self.font = ImageFont.truetype("/home/abot/abot/src/vl_locate/config/SimHei.ttf", 32)
+        self.image_path = '/media/abot/999/abot/src/vl_locate/image/vlm_now.jpg'
+        self.font = ImageFont.truetype("/media/abot/999/abot/src/vl_locate/config/SimHei.ttf", 32)
         s = rospy.Service('vlm_detection', GetObject, self.handle_vlm_detection)
 
     def encode_image(self, image_path):
@@ -121,7 +121,7 @@ class VLM:
         draw.text((x_min, y_min-32), START_NAME, font=self.font, fill=(255,0,0))
         img_bgr = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
         
-        cv2.imwrite('/home/abot/abot/src/vl_locate/image/vlm_now.jpg', img_bgr)
+        cv2.imwrite('/media/abot/999/abot/src/vl_locate/image/vlm_now.jpg', img_bgr)
         return center_x, center_y
 
     def vlm_detection(self):

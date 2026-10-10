@@ -74,7 +74,7 @@ def main():
     bridge = CvBridge()
 
     # 加载模型
-    model = YOLO("/home/abot/abot/src/region_counter/model/counter.pt")
+    model = YOLO("/media/abot/999/abot/src/region_counter/model/counter.pt")
 
     # 定义区域点
     region_points = [(20, 20), (20, 400), (600, 400), (600, 20)]
