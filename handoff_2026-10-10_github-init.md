@@ -80,7 +80,19 @@ C:\Users\lenovo\Desktop\robot-car-nested-git-backup\
 
 ---
 
-## 五、已知问题 / 建议的后续工作
+## 五、参考资料
+
+厂商教学手册《移动抓取机器人》（万创鑫诚，ABOT-M1-ATK，148 页）：
+原文件 `C:\Users\lenovo\Downloads\移动抓取机器人.pdf`，
+已渲染的页面图在 `C:\Users\lenovo\Desktop\robot-car-ref\pages\`，
+章节与包的对应关系见仓库内 [`docs/手册索引.md`](docs/手册索引.md)。
+
+**定位：代码以本仓库为准，手册只做参考。** 手册的工作区路径（`~/abot_ws/`）
+和包名（`yolo_detection`）都跟本仓库不一致，命令不能照抄。
+
+---
+
+## 六、已知问题 / 建议的后续工作
 
 1. **绝对路径硬编码** — 源码多处写死 `/home/abot/...`
    （如 `yolov8_ros/script/multi_yolo.py` 的模型路径、`vl_locate/scripts/server.py`
@@ -98,6 +110,14 @@ C:\Users\lenovo\Desktop\robot-car-nested-git-backup\
 
 5. **API Key** — `vl_locate/scripts/server.py` 调用阿里 dashscope，目前
    `api_key=''` 为空。**不要**把 key 硬编码进去，用环境变量。
+
+6. **文件名损坏** — `abot/src/robot_slam/scripts/.py` 只剩扩展名。内容是
+   LaserScan 订阅脚本，应重命名。
+
+7. **`find_object.py` 有运行时错误** — `abot/src/robot_slam/scripts/find_object.py`
+   里 `find_cb` 被嵌套定义在 `__init__` 内部，所以上一行的
+   `rospy.Subscriber(..., self.find_cb)` 会抛 `AttributeError`（此时 `find_cb`
+   还不存在于类上）。需要把 `find_cb` 反缩进成类方法。
 
 ---
 
