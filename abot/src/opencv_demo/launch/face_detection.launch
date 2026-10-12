@@ -15,10 +15,12 @@
   <arg name="queue_size" default="3" doc="Specigy queue_size of input image subscribers" />
 
   <!-- 定义人脸检测级联分类器文件路径 -->
-  <arg name="face_cascade_name" default="/home/abot/cv2/opencv-4.5.5/data/haarcascades/haarcascade_frontalface_alt.xml" doc="Face detection cascade Filename" />
+  <!-- 原为 /home/abot/cv2/opencv-4.5.5/data/haarcascades/...（源码目录，本机不存在），
+       2026-10-12 由 0-check.sh 全盘搜确认真实位置是系统自带的 opencv4 haarcascades 目录 -->
+  <arg name="face_cascade_name" default="/usr/share/opencv4/haarcascades/haarcascade_frontalface_alt.xml" doc="Face detection cascade Filename" />
 
   <!-- 定义眼睛检测级联分类器文件路径 -->
-  <arg name="eyes_cascade_name" default="/home/abot/cv2/opencv-4.5.5/data/haarcascades/haarcascade_eye_tree_eyeglasses.xml" doc="Eye detection cascade Filename" />
+  <arg name="eyes_cascade_name" default="/usr/share/opencv4/haarcascades/haarcascade_eye_tree_eyeglasses.xml" doc="Eye detection cascade Filename" />
 
   <!-- 启动人脸检测节点 -->
   <node name="$(arg node_name)" pkg="opencv_apps" type="face_detection"  >

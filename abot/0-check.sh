@@ -148,9 +148,15 @@ echo "    python 的 cv2 装在哪:"
 python3 -c "import cv2,os;print('      cv2',cv2.__version__,'->',os.path.dirname(cv2.__file__))" 2>/dev/null \
   || no "      python3 -c 'import cv2' 失败"
 echo
-echo "  [B] find_object_2d 包（abot_find 的 launch 里依赖它）:"
-r=$(rospack find find_object_2d 2>/dev/null); [ -n "$r" ] && ok "$r" || no "系统里没有 find_object_2d 包"
-r=$(rospack find abot_find 2>/dev/null);      [ -n "$r" ] && ok "$r" || no "abot_find 找不到"
+echo "  [B] find_object_2d 包 —— 注意：目录名是 abot_find，包名是 find_object_2d"
+echo "      （package.xml 里写 <name>find_object_2d</name>，所以只能按包名查）"
+r=$(rospack find find_object_2d 2>/dev/null)
+case "$r" in
+  */abot_find) ok "$r" ; echo "         目录名 abot_find ↔ 包名 find_object_2d，与预期一致" ;;
+  "")          no "find_object_2d 找不到 --> abot_find 的 launch 全都跑不了" ;;
+  *)           ok "$r" ; warn "解析到非预期路径，环境可能变过" ;;
+esac
+echo "      （'rospack find abot_find' 失败是正常的：abot_find 只是目录名，不是包名）"
 
 hr; echo " 7/7  当前 ROS 运行状态"; hr
 if pgrep -x rosmaster >/dev/null 2>&1; then
