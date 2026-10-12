@@ -5,6 +5,7 @@
 - 上午 `2ccb67b` — 修复级联文件路径与 abot_find 包名误报，新增上机操作清单与体检记录
 - 下午 `6ec7281` — 上机验证 C5/C7 并建成本房间地图：修 killall 漏杀、悬空软链接误报，导航改用 my_home
 - 傍晚 `0ee50e0` — 记录第 3 步上机验证通过：AMCL 定位准、D9 避障恢复正常（安全隐患关闭）
+- 傍晚 `5fc4a08` — 查清 B1 根因：RViz 的 Image 订阅的是另一台相机的话题
 上一份交接：[`handoff_2026-10-10_github-init.md`](handoff_2026-10-10_github-init.md)
 问题总账：[`docs/上机调试问题汇总.md`](docs/上机调试问题汇总.md)
 上机操作单：[`docs/上机操作清单.md`](docs/上机操作清单.md)
@@ -66,13 +67,13 @@
 
 | 项 | 状态 |
 |---|---|
-| 仓库 `main` | `2ccb67b`，工作树干净，**领先 origin 1 个提交、未推送** |
-| U 盘 `E:\abot` | 上一轮已同步：`face_detection.launch`、四个启动脚本、`ros-env.sh`。<br>⚠️ **本轮有待同步的三项**（2026-10-12 傍晚插回 Windows 时处理）：<br>① `abot/killall.sh` —— 盘上**还是旧版**（缺第 3 层 `$WS/devel/lib/`+`$WS/src/`、缺 `fuser` 寻址、缺悬空软链接检查）<br>② `abot/0-check.sh` —— 第 3 节的**悬空软链接修复**（先测 `-e` 再测 `-L`）未同步<br>③ 删除 `abot/src/abot_bringup/launch/.goutputstream-RIW5J2`（仓库里已 `git rm`，盘上还在） |
-| 机器人 | 体检通过，**干净起点**；`0-check.sh` 是只读的，没在车上写坏任何东西 |
+| 仓库 `main` | `5fc4a08`，工作树干净（除本交接文件外），**领先 origin 4 个提交、未推送** |
+| U 盘 `E:\abot` | ✅ **2026-10-12 傍晚已全量同步**（`diff -rq` 全树零差异）。<br>⭐ **晚间第二批也已同步**（2026-10-12 17:2x，`diff -rq` 复查无差异、三个文件 md5 一致）：<br>① `abot/src/robot_slam/scripts/nav.py` —— D9 补修（注释 `enabled: 0`）<br>② `abot/src/robot_slam/scripts/vl_nav.py` —— 同上<br>③ `abot/src/yolov8_ros/launch/usb_cam.launch` —— B1 修复（加 `framerate=25`）<br>**⚠️ `docs/` 从来就不在 U 盘上**（`E:\` 根下和 `E:\abot\` 下都没有 `docs/` 目录）—— 文档是仓库专有，只落 D 盘。 |
+| 机器人 | 第 3 步导航验证通过，**干净起点**；`0-check.sh` 是只读的，没在车上写坏任何东西 |
 | 车内 `/etc`、`/home/abot` | 一个字未动 |
 
-> ⚠️ 注意：`face_detection.launch` 和 `0-check.sh` 的修改**已在 U 盘上**，
-> 所以下次插到车上就是最新版，可以直接测 `roslaunch opencv_demo face_detection.launch`。
+> ⚠️ 唯一**没做**的事：**没有 `git push`**。`main` 领先 `origin/main` 4 个提交，
+> 全在本地。要推就说一声。（`2ccb67b` / `6ec7281` / `0ee50e0` / `5fc4a08`）
 
 ---
 
@@ -141,6 +142,28 @@ export ROS_MASTER_URI=http://localhost:11311
 > **不要**去 `rosdep init`）。另有 gnome-terminal 的 `选项"-e"已弃用` —— 目前仍可用，
 > 标签页确实开出来并执行了命令，**不是**故障原因。
 
+## 三之四、2026-10-12 晚间追加（D9 只修了半条 —— `grasp.sh` 会关避障）
+
+**起因**：用户跑完 `./grasp.sh` 发来 RViz 截图（`屏幕截图 2026-10-12 165746.png`）。
+截图本身只有两件事：`roscore http://localhost:11311/`（**C5 的 export 实锤生效**）、
+`Image` 面板仍是 `No Image`（topic `/usb_cam2/image_raw`）；
+另外 `Full Plan` 前面的勾**没打**（要给 `2D Nav Goal` 得先勾上）。
+
+但顺着查 `grasp.sh` 到底起了什么，挖出一个**比截图更要紧的问题**：
+
+| 发现 | 说明 |
+|---|---|
+| **🚨 `grasp.sh` 是厂商的整套演示剧本，不是"导航+抓取"** | 第 7 个标签页 `roslaunch robot_slam grab.launch` → 起 `nav.py`，里面等着 `input("Please enter 1 to continue: ")`。**这是唯一的安全闸。** |
+| **🚨 D9 只修了半条** | 同样的三行 `update_configuration({"enabled": 0})`（关掉代价地图的障碍物层/静态地图层/膨胀层 ⇒ 路径穿墙）在**三个文件**里都有：`pub_point.py`（✅ 10-10 已注释）、**`nav.py`（❌ 还活着）**、**`vl_nav.py`（❌ 还活着）**。<br>`3-amcl_test.sh` 走的是 `pub_point.py` ⇒ 所以第 3 步验出"避障正常"**只证明了那一条路**；`grasp.sh` / `4-test.sh` 走的 `nav.py`，**一按 `1` 照样关避障**。<br>**✅ 已把 `nav.py` 和 `vl_nav.py` 一并注释掉**，全工作区 grep `update_configuration` + `enabled` **已无未注释调用**；三个文件均过 `ast.parse`。 |
+| **🚨 `nav.py` 还有别的危害** | ① 往 `grab.launch` 里**写死的 16 个坐标**跑 —— 那是**厂商实验室**的点位<br>② **3 处 `navi.end()` 盲退**：`linear.x = -0.3` × 8 s ≈ **2.4 米**，全程不看传感器<br>③ 依次触发 `/grab`、`/put`，**动机械臂** |
+| **⇒ 结论** | **`grasp.sh` ≈「在厂商房间里跑一遍厂商的剧本」。** 想让它在本房间自跑，得先量点位、换 `grab.launch` 的 `goalList`。**在那之前别按 `1`**；只想让它自己走过去，用 `2D Nav Goal`（第 3.5 步）。 |
+| **⭐ B1 真因找到并已修（17:2x）** | 用户截来第 4 个标签页（`multi_yolo`），日志写死：`Starting 'head_camera' (/dev/video2) at 640x480 via mmap (yuyv) at 30 FPS` → `[ERROR] VIDIOC_STREAMON error 5, Input/output error` → `process has died`。<br>⇒ **`/usb_cam2/image_raw` 从来没人发过**，RViz 的 `No Image` 不是"话题配错"，是**那个话题不存在**。<br>**根因**：`v4l2-ctl -d /dev/video2 --list-formats-ext` 实测 —— 640×480 下 **MJPG 和 YUYV 都只到 25 fps**，而 `usb_cam` 的 `framerate` **默认 30**，`usb_cam.launch` 里又没写。请求一个不存在的帧率 ⇒ STREAMON 直接 EIO。<br>**✅ 已修**：`yolov8_ros/launch/usb_cam.launch` 显式加 `<param name="framerate" value="25" />`，**已同步到 U 盘（md5 一致）**。**尚未上机验证。** |
+| **排查中排除掉的**（省得重走） | ① **不是设备被占** —— 全仓库只有 `yolov8_ros/launch/usb_cam.launch` 用 `video2`，其余全用 `video0`；`grasp.sh` 其它标签页没有一个开相机；无 `cv2.VideoCapture` 直连代码。<br>② **不是设备号错** —— `video2` 是摄像机 B 的主采集节点（`video3` 是它的元数据通道），能打开、能设成 640×480，**是到"开流"才失败**。<br>③ 那条 calibration `[WARN]` 是没做标定，**不是故障**。<br>④ 两台相机挂在**同一个 USB 控制器** `usb-3610000.xhci` 的 2.1 / 2.3 口 —— 以后再遇"开两台坏一台"先怀疑总线带宽。 |
+| **修不好时的后备** | ① `pixel_format` 改 `mjpeg`（压缩，带宽小一个数量级；那行 `color_format=yuv422p` 本就是 mjpeg 才用的）<br>② MJPG 也 EIO ⇒ 设备/内核层，和 **C7 同一族** ⇒ `sudo reboot`<br>③ 重启仍不行才考虑硬件 |
+| **顺带记一笔** | `cam_track` 的 `usb_cam_with_calibration.launch`（video0）**也没写 `framerate`**，同样默认 30。video0 目前没见报错，先不动；**哪天它也报 STREAMON EIO，修法一模一样**。 |
+
+---
+
 ## 三之三、2026-10-12 傍晚追加（C4 建图成功 + C7/C8 收口）
 
 | 项 | 结果 |
@@ -149,9 +172,10 @@ export ROS_MASTER_URI=http://localhost:11311
 | **C7 收口 ✅** | 定性为**瞬时 USB 掉线**（`ttyUSB1` 于 15:29 重新枚举，`ttyUSB0/1/2` 三个都是真实字符设备）。关键结论：**设备回来 ≠ 进程自愈** —— 老 `abot_driver` 攥着已 hangup 的旧 fd，`read err 0` 会一直刷，**必须杀掉重启**。重启后串口干净，未再复发。 |
 | **C8 收口 ✅ 未复现** | 重启 + 干净启动后 `/robot_state_publisher` **正常在跑**，RViz 雷达扇形正常、地图正常生成；上次的 `/amcl`、`/map_server`、`/move_base` 残留全没了。又查过 `abot_bringup/` 下所有 launch，**没有任何 `required="true"`**（不存在"某节点一挂带走整包"的机制）。⇒ 判定为**脏会话偶发，不是代码 bug**，不单独修。 |
 | **地图 origin 疑点（不阻塞）** | `my_home.yaml` 与 `my_lab.yaml` 的 `origin`（`[-1.0, -13.8, 0.0]`）/ `resolution` / 尺寸**逐位相同**，但内容不同（md5 不同）。查过 `gmapping.launch.xml`：**没把地图窗口写死**（`xmin/xmax/ymin/ymax=±1.0` 是扫描匹配搜索窗，不是地图尺寸）。未证实，**不影响使用**。 |
-| **⭐ 第 3 步 全过（D9 关闭）** | 换 `my_home` 后跑 `./3-amcl_test.sh`：`/amcl`、`/map_server`、`/move_base`、`/rplidarNode` 四个都在；**RViz 里激光点贴合地图墙线**（定位准）；`2D Nav Goal` 的红色 `Full Plan` **绕开障碍物、不贴墙**。⇒ **D9 安全隐患正式关闭**（代码 2026-10-10 已注释掉那三行，本次是上机证实它真的生效）。 |
+| **⭐ 第 3 步 全过（D9 关闭）** | 换 `my_home` 后跑 `./3-amcl_test.sh`：`/amcl`、`/map_server`、`/move_base`、`/rplidarNode` 四个都在；**RViz 里激光点贴合地图墙线**（定位准）；`2D Nav Goal` 的红色 `Full Plan` **绕开障碍物、不贴墙**。⇒ **D9 安全隐患正式关闭**（代码 2026-10-10 已注释掉那三行，本次是上机证实它真的生效）。<br>⚠️ **但还没验的是"机器人是否真的按这条路走过去"** —— `Full Plan` 绕障只是**规划层**的结论；局部规划器、代价地图、`cmd_vel` 这一段尚未实跑验证。**自跑前应先单独做一次纯自主导航**（`2D Nav Goal` 后看它真的动、真的绕、真的到）。 |
+| **B1 根因查清 ✅（不阻塞自跑）** | RViz `view_navigation.rviz:415` 的 `Image Topic` 是 `/usb_cam2/image_raw`（由 `yolov8_ros` 的 `usb_cam2` 节点发，读 `/dev/video2`），而 `3-amcl_test.sh` 起的是 `cam_track` 的 `usb_cam` 节点（读 `/dev/video0`，发 `/usb_cam/image_raw`）—— **两台不同的相机**。所以 `3-amcl_test.sh` 会话里 RViz 永远 `No Image`，**不是相机坏**。<br>`grasp.sh` 里 `multi_yolo` 起的正是 `usb_cam2`，与 RViz 配置自动对上。**剩下只差确认 video2 那台是否对着工作台**（跑 `grasp.sh` 看画面即可）。 |
 
-**第 3 步 · 导航回归 + D9 避障验证 ⭐ 最优先**
+**第 3 步 · 导航回归 + D9 避障验证 ⭐ 最优先 —— ✅ 2026-10-12 已通过**
 
 ⚠️ **前置条件（C7）**：动手前先确认串口是活的，否则雷达起不来、`abot_driver` 会刷屏，
 后面的结论全是废的：
@@ -171,8 +195,64 @@ rosnode list | grep -E "amcl|map_server|move_base|rplidarNode"   # 四个都要�
 RViz 里用 `2D Nav Goal` 给目标点，看红色 `Full Plan` **必须绕开障碍物、不贴墙**。
 贴墙说明 `pub_point.py` 那三行 `enabled: 0` 还在起作用。
 
-**之后**：第 4 步查相机（B1）、第 5 步重新建图（C4，存图必须用绝对路径
-`map_saver -f /media/abot/999/abot/src/robot_slam/maps/my_home`）、第 6 步清 D 系列。
+**✅ 实测结果**（详见 `docs/上机操作清单.md` 进度记录表）：四个节点齐、激光贴墙线、
+`Full Plan` 绕障不贴墙 ⇒ **D9 关闭**。
+
+---
+
+### ⏭️ 下一步：让它自己跑一遍（2026-10-12 用户提出）
+
+**先做「纯自主导航」这个增量，再上 `grasp.sh` 完整流程。** 理由：第 3 步只验了
+**规划层**（红色 `Full Plan` 绕障），**局部规划器 → 代价地图 → `cmd_vel` → 底盘真动**
+这一段从没实跑过。直接上 `grasp.sh` 的话，万一它不动，你分不清是导航的问题
+还是 YOLO/抓取的问题。分层上，一次只引入一个新变量。
+
+**① 清场 + 前置检查**
+
+```bash
+cd /media/abot/999/abot
+./killall.sh                       # 一切换脚本就先杀干净（旧版杀不干净会让雷达起不来）
+ls -l /dev/ttyUSB*                 # 必须看到 ttyUSB0/1/2 —— 见 C7
+ls /sys/bus/usb-serial/devices/    # 不能为空
+```
+
+**② 起导航**（`3-amcl_test.sh`：导航 + 相机 + RViz + 键盘 + pub_point，**不含机械臂**）
+
+```bash
+./3-amcl_test.sh
+rosnode list | grep -E "amcl|map_server|move_base|rplidarNode"
+```
+
+**③ RViz 里必须先给 `2D Pose Estimate`** —— ★ **每一次 AMCL 启动都要做**，不做的话
+AMCL 不知道机器人在哪，`2D Nav Goal` 给出去它也不知道往哪走。
+
+**④ 给一个 `2D Nav Goal`，然后盯着看这三件事**（这是本次真正要验的）
+
+| 看什么 | 在哪看 | 通过标准 |
+|---|---|---|
+| 它**真的动了** | 地板 / 轮子 | 不是只画了条线就不动 |
+| 它**绕开障碍**了 | 实物 | 路上放个箱子，它绕过去而不是推着走 |
+| 它**停到点**了 | RViz 里的机器人位姿 | 到位后自己停住，不再抽动 |
+
+**⑤ 出问题怎么读**：`3-amcl_test.sh` 那个标签页里 `move_base` 的输出是关键。
+- **`Full Plan` 有、局部路径没有** → 局部规划器（`DWAPlannerROS`）或代价地图问题
+- **两条路径都有、底盘不动** → 看 `rostopic echo /cmd_vel` 有没有数；有数不动是底盘/串口（C7）
+- **定位在飘** → 回到 `2D Pose Estimate`，或确认用的是 `my_home` 这张图
+
+**⑥ 全过之后**，再上 `./grasp.sh`（导航 + YOLO + 抓取 + 放置 + RViz）。
+这时再看 RViz 的 `Image` 面板 —— 按 B1 的结论它订阅的是 `/usb_cam2/image_raw`，
+`grasp.sh` 起的 `multi_yolo` 正好发这个话题，**应该直接有画面**。
+画面里**能看到工作台和机械臂前方**，B1 就彻底闭上了；看不到就是 video2 那台相机
+**装的朝向不对**，那是装配问题，不是代码问题。
+
+**安全**（用户已确认要自跑，把这几条摆明）：
+- 场地清空，人**别站在机器人路径上**
+- **手别伸进机械臂范围** —— `grasp.sh` 会动机械臂，它不看人
+- 手边留着 `Ctrl-C`，或者直接 `./killall.sh`
+- `2D Nav Goal` 先给**近的、直的**点（比如 1 米正前方），确认能动再给远的、要绕弯的
+
+**之后**：第 4 步正式结掉 B1、第 5 步再建图就用同一套流程、第 6 步清 D 系列
+（D13/D14 代码已改，但**尚未上机验证**）。
 
 **待补**：第 1/7、5/7 节的截图（不阻塞开工）。
 
@@ -207,3 +287,138 @@ RViz 里用 `2D Nav Goal` 给目标点，看红色 `Full Plan` **必须绕开障
 
 **还原方式**：`git revert 6ec7281`。若只想退回厂商地图，改
 `navigation.launch` 第 4 行的 `map_name` 回 `my_lab.yaml` 即可（`my_lab` 仍留在 `maps/` 下）。
+
+### 晚间那一批（D9 补修 + B1 真因修复；**✅ 已同步到 U 盘**）
+
+| 文件 | 改动 | 在 U 盘上？ |
+|---|---|---|
+| `abot/src/robot_slam/scripts/nav.py` | **D9 补修**：注释掉等价的 3 行 `update_configuration({"enabled": 0})`（旧行号 201–203），并写下危害说明（`grasp.sh`/`4-test.sh` 经 `grab.launch` 启动它 + 3 处盲退 + 写死的厂商点位） | ✅ |
+| `abot/src/robot_slam/scripts/vl_nav.py` | 同上（旧行号 199–201）。该文件**无任何 launch/sh/文档引用**，属顺手拆雷 | ✅ |
+| `abot/src/yolov8_ros/launch/usb_cam.launch` | **B1 尝试修复**：加 `<param name="framerate" value="25" />`（相机 640×480 只到 25 fps，`usb_cam` 默认要 30 ⇒ STREAMON EIO）。**❌ 上机验证失败**，见下节 | ✅（25 fps 那版） |
+| `docs/上机调试问题汇总.md` | D9 表格行改写为"三处文件" + 详解段补记；新增「B1 续」小节（真因、实测表格、已排除项、后备方案） | — 文档只在 D 盘 |
+| `docs/上机操作清单.md` | 新增「第 3.5 步 纯自主导航实跑」；第 4 步 B1 改写为真因结论；第 3.5 步（6）加 `grasp.sh` 剧本警告；进度表更新 | — 同上 |
+| `handoff_2026-10-12_onboard-checkup.md` | 本文件 | — 同上 |
+
+**还原方式**：三个源码文件里把改的东西去掉/`#` 去掉即可（就是恢复厂商原行为）。
+
+### 第三批 · 2026-10-12 17:3x（B1 帧率假设被推翻；**⚠️ 未同步 U 盘**）
+
+**用户澄清了一件事**：他说的"导航"是指 **`nav.py` 那条写死路线跑全程**（`grasp.sh` 第 7 个标签页），
+不是手动给一个 `2D Nav Goal`。⇒ 目标本身没变，但**全程自跑现在有两个硬阻塞**：
+
+1. **相机不活 ⇒ 卡在第一个抓取点。** `nav.py` 每到抓/放位就是 `while True` 死等 `/success`，
+   而 `grab.py` **只在五步抓取全走完（第 193 行）才 `set_param('success', True)`**，
+   那五步靠相机 + YOLO。相机死 ⇒ 永远没有 `/success` ⇒ 机器人停在原地、不报错、不退出。
+2. **`grab.launch` 里 16 个坐标是厂商实验室的**（3×3 货架网格 + 接近点），不是本房间的。
+
+⇒ 顺序只能是 **① 相机 → ② 量点位 → ③ 全程**。`3-amcl_test.sh` 那条"手给点"的路
+可作 ① 之前的导航链路验证（第 3.5 步）。
+
+**B1 新进展 —— 帧率假设 ❌ 已推翻：**
+
+`framerate=25` 确实生效了（日志变 `at 640x480 via mmap (yuyv) at 25 FPS`），
+**但下一行照样 `VIDIOC_STREAMON error 5, Input/output error` + `process has died`**。
+⇒ **参数生效、故障不变 ⇒ 帧率不是元凶。**
+
+**⭐ 决定性取证已做（17:5x）—— 真因定性为「设备/内核层」，与 `usb_cam` 配置无关：**
+
+```
+v4l2-ctl -d 2 --stream-mmap --stream-count=10      ⇒ Input/output error
+```
+
+这条命令**不带任何参数、绕开 `usb_cam`**，就是让设备用自己的默认设置推 10 帧。
+**连它都 EIO ⇒ 帧率和像素格式都不可能是元凶。** 对照：
+
+| 谁 | 结果 |
+|---|---|
+| `usb_cam2` 节点（yuyv / 25 fps） | `VIDIOC_STREAMON error 5` |
+| `v4l2-ctl`（**无参**） | `Input/output error` |
+| `VIDIOC_S_FMT` 设格式 | **成功** —— 只有"开流"这一步过不去 |
+
+⇒ 和 **C7 同一族**（USB 设备掉线、没干净重枚举）。**`sudo reboot` 对症，17:5x 用户已执行。**
+
+> **`pixel_format` 改 `mjpeg` 因此降级为"顺手买的带宽保险"，不是根因修复** ——
+> 但仍保留（仓库已改），因为两台相机同挂 `usb-3610000.xhci`，改完顺带把带宽余量也留出来。
+> ⚠️ 那行命令的 `-d` **不能省**，写成 `v4l2-ctl dev/video2 ...` 会报 `unknown arguments: dev/video2`
+> 并吐一屏帮助（用户已踩过一次）。
+
+**⭐ 结果（2026-10-12 17:50）：相机已出图 —— B1 主体解决。**
+
+`sudo reboot` + `pixel_format=mjpeg` 之后跑 `./grasp.sh`，
+第 4 个标签页（`multi_yolo`）**不再报 `STREAMON error 5`、进程不再退出**，
+**RViz 的 `Image` 面板出画面了**（能看到地面和一条亮的东西）。
+
+日志变成 mjpeg 解码路径的常态输出：
+
+```
+swscaler: No accelerated colorspace conversion found from yuv422p to rgb24
+mjpeg:    unable to decode APP fields: Invalid data found when processing input
+```
+
+**⚠️ 这两行是警告不是错误** —— `usb_cam` + MJPG 一开就刷屏，别被吓到。
+判据：**图出来了 ⇒ 红字是噪音**；致命的只有 `VIDIOC_STREAMON error 5` / `process has died`。
+`yuv422p → rgb24` 这个转换**只在 mjpeg 解码分支出现** ⇒ 证明改的配置确实生效了。
+
+**⚠️ 归因未分离**：这次同时改了两个变量（`sudo reboot` + `mjpeg`），
+**分不清是谁治好的**。想分离就补跑 `v4l2-ctl -d 2 --stream-mmap --stream-count=10`
+（该命令走设备默认格式、不经 mjpeg）：能推流 = 重启治好的；仍 EIO = mjpeg 治好的。
+**不阻塞使用，只是留个记录。**
+
+**☐ 唯一剩余项 —— 画面拍到的是什么？**
+
+| 画面里看到 | 结论 |
+|---|---|
+| **工作台 / 机械臂正前方 / 桌上要抓的东西** | ✅ **B1 彻底关闭** |
+| 地板 / 天花板 / 墙 | ⚠️ video2 那台**相机装配朝向不对** —— **硬件问题，不是代码问题**，得找厂商 |
+
+**若以后复发（重启仍 EIO）** ⇒ 才轮到硬件/常驻配置：
+换 USB 线/口（避开 video0 那个控制器）→ 只插一台试 → `dmesg | grep -i uvc` → 最后才怀疑相机。
+
+| 文件 | 17:3x 改动 | 在 U 盘上？ |
+|---|---|---|
+| `abot/src/yolov8_ros/launch/usb_cam.launch` | `pixel_format` 改 `mjpeg`，注释块重写（记录帧率假设被推翻的完整取证过程） | **✅ 已同步（2026-10-12 18:0x，U 盘插回 Windows 后）**：改前盘上 md5 `10766c488077bfdaa646090a6c3d050a`（25 fps + `yuyv`），改后两侧同为 `11292d9f70fb7241602518c641987c70`。`diff -rq` 全树复查：**除 `__pycache__` 外零差异** |
+| `docs/上机调试问题汇总.md` | B1 续小节重写：标注帧率假设已推翻、格式假设待验、补 `v4l2-ctl -d` 取证命令与 EIO 判读 | — 文档只在 D 盘 |
+| `docs/上机操作清单.md` | 第 4 步标题改「🔶 表因已清、真因仍在查」；补 (A)(B)(C)(D) 四步判读表；第 3.5 步开头加「"自己跑一遍"两个意思」对照表；进度表两行更新 | — 同上 |
+| `docs/功能测试清单.md` | 末表 B1 行改掉"已修"的错误结论 | — 同上 |
+
+> **同步欠账已清**。`docs/` 不用管 —— 它从来就不在 U 盘上。
+> **另**：`nav.py` / `vl_nav.py` 在 17:2x 就同步过了，本次全树 `diff -rq` 确认仍是同步的，
+> 没被这次重启/拔插弄乱。
+
+### 会话收尾状态（2026-10-12 18:1x）
+
+**本轮真正解决的两件事：**
+
+| # | 事 | 结果 |
+|---|---|---|
+| 1 | **B1 相机** | ✅ **修好了**。`sudo reboot` + `pixel_format: yuyv → mjpeg` 之后 RViz `Image` 面板出画面。日志里 `No accelerated colorspace conversion` / `unable to decode APP fields` 是**警告非错误**（判据：图出来了就是噪音）。⚠️ **归因未分离**（reboot 与 mjpeg 同时改），想分离就补跑 `v4l2-ctl -d 2 --stream-mmap --stream-count=10`，**不阻塞使用**。 |
+| 2 | **C9 重启后雷达没起来** | ✅ **已恢复**。串口侧完全正常（`/dev/rplidar -> ttyUSB0`、三个 ttyUSB 全在）⇒ 是 `rplidarNode` **抢在 udev 建软链接之前**去开串口而退出。`./killall.sh` + `./grasp.sh` 重开一次即好 ⇒ **定性为时序/竞态，不是配置或硬件**。完整记录见 `docs/上机调试问题汇总.md` **C9**。用户反馈"有红框了"。 |
+
+**⭐ 本轮新学的两条通用规律（已写进 `docs/上机调试问题汇总.md`）：**
+
+1. **时好时坏 = 时序；每次必坏 = 配置/硬件。** ⇒ C9 属前者，能从时序上治。
+2. **"重开一次就好"不是万能药** —— 它治"进程死了"，治不了"设备真没回来"
+   （后者软链接会悬空，重开多少次都不行，得拔插 USB / 再重启）。
+   根子上仍是 C7 那条铁律：**设备回来 ≠ 进程自愈**。
+
+**新规程（开机时照做）：**
+
+1. 开机后**等 30～60 秒**（等 udev 建完设备），别抢跑
+2. 先验设备：`ls -l /dev/rplidar /dev/abot_driver` + `ls /dev/ttyUSB*`（三个都要在、不悬空）
+3. 再 `./grasp.sh`
+4. 起来后**第一件事** `rostopic hz /scan` —— 出 `average rate: 10` 才算真起来了
+
+**⚠️ 会话结束时的机器人状态**：`grasp.sh` 全套在跑，`nav.py`（`/navigation_node`）
+停在 `input("Please enter 1 to continue: ")`。
+**没有按过 `1`** —— 即从未往厂商的 16 个写死点位跑过。机器人安全、未移动。
+
+**未同步项**：`docs/` 只在 D 盘（历来如此）；`abot/` 源码与 U 盘 `diff -rq` 零差异。
+
+**下一次开工的入口 —— 用户的真实目标仍然是"让它自己按路线跑一遍全程"，两个前置：**
+
+| 前置 | 状态 |
+|---|---|
+| ① 相机不活 ⇒ 卡在第一个抓取点（`nav.py` 的 `while True` 死等 `/success`，`grab.py:193` 只在五步抓取全走完后才 `set_param('success', True)`） | ✅ **相机已修**，这一环通了 |
+| ② `grab.launch` 的 16 个点位是厂商实验室的（3×3 货架网格 + 接近点） | ❌ **仍待办** —— 要在本房间重新量 |
+
+⇒ **下一步顺序：① 先跑第 3.5 步（`3-amcl_test.sh` + `2D Nav Goal` 手给近点）验"局部规划器 → 底盘真动"这一段（从未实跑过）→ ② 再量 16 个点位 → ③ 才上全程。**

@@ -196,9 +196,17 @@ if __name__ == "__main__":
 
         # rospy.sleep(5)
         rospy.loginfo("setting dynamic parameters ")
-        local_obstacle_client.update_configuration({"enabled": 0})
-        global_static_client.update_configuration({"enabled": 0})
-        local_inf_client.update_configuration({"enabled": 0})
+        # ------------------------------------------------------------------
+        # 【2026-10-12 修改 · 安全】下面三行原本是打开的（与 pub_point.py / nav.py
+        #   是同一处隐患，即问题汇总里的 D9）：关掉代价地图的障碍物层 / 静态地图层 /
+        #   膨胀层 ⇒ 规划出来的路径会直接穿墙。
+        # 说明：本文件目前没有任何 launch / sh / 文档引用（grep 过），属于未接线的
+        #   脚本，但留个活的地雷没意义，一并注释掉。
+        # 如需恢复厂商原行为，把下面三行的 # 去掉即可。
+        # ------------------------------------------------------------------
+        # local_obstacle_client.update_configuration({"enabled": 0})
+        # global_static_client.update_configuration({"enabled": 0})
+        # local_inf_client.update_configuration({"enabled": 0})
         navi.goto(goals[1])
         rospy.sleep(5) 
         rospy.set_param('/grab', 1)

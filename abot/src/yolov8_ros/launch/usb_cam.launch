@@ -3,8 +3,30 @@
     <param name="video_device" value="/dev/video2" />
     <param name="image_width" value="640" />
     <param name="image_height" value="480" />
-    <param name="pixel_format" value="yuyv" />
+    <!-- ★ 2026-10-12 改动：格式 yuyv → mjpeg，并显式指定 25 fps。
+         背景：这台相机（Integrated_Webcam_HD，/dev/video2）的 usb_cam2 节点
+         一启动就死在开流那一步：
+             [INFO]  Starting 'head_camera' (/dev/video2) at 640x480 via mmap (yuyv) at 30 FPS
+             [ERROR] VIDIOC_STREAMON error 5, Input/output error
+             [usb_cam2-2] process has died [exit code 1]
+         后果：/usb_cam2/image_raw 从来没人发，RViz 的 Image 永远 No Image（B1）。
+
+         排查记录：
+         ① 先怀疑帧率 —— 对该设备列出格式后发现 640x480 下 MJPG / YUYV 都只到
+            25 fps，而 usb_cam 默认要 30。改成 25 后【日志确实变成 25 FPS 了，
+            但 STREAMON 仍然 EIO】⇒ 帧率不是元凶。
+         ② 于是改格式 —— 未压缩 YUYV 640x480@25 要走约 15 MB/s 的等时带宽，
+            MJPG 是压缩的、小一个数量级。两台相机还挂在同一个 USB 控制器
+            （usb-3610000.xhci）上，带宽是最可能的瓶颈。
+            下面那行 color_format=yuv422p【本来就只在 mjpeg 模式下有用】，
+            原文件把它和 yuyv 摆在一起，正是厂商改配置时漏改的痕迹。
+
+         若 mjpeg 仍报 STREAMON EIO ⇒ 不是配置问题，是设备/内核层
+         （和当天的 C7 同族，USB 设备掉线重枚举）⇒ 先 sudo reboot。
+         注：本注释里刻意不写命令行开关的双横线，XML 注释不允许连续两个减号。 -->
+    <param name="pixel_format" value="mjpeg" />
     <param name="color_format" value="yuv422p" />
+    <param name="framerate" value="25" />
     <param name="camera_frame_id" value="camera_link2" />
     <param name="io_method" value="mmap"/>
     <remap from="image" to="/usb_cam2/image_raw"/>

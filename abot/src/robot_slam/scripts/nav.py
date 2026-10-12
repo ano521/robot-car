@@ -198,9 +198,23 @@ if __name__ == "__main__":
 
         # rospy.sleep(5)
         rospy.loginfo("setting dynamic parameters ")
-        local_obstacle_client.update_configuration({"enabled": 0})
-        global_static_client.update_configuration({"enabled": 0})
-        local_inf_client.update_configuration({"enabled": 0})
+        # ------------------------------------------------------------------
+        # 【2026-10-12 修改 · 安全】下面三行原本是打开的（与 pub_point.py 是同一处隐患，
+        #   即问题汇总里的 D9）。它们会把 move_base 的
+        #   局部代价地图 · 障碍物层  (local_costmap/obstacle_layer)
+        #   全局代价地图 · 静态地图层(global_costmap/static_layer)
+        #   局部代价地图 · 膨胀层    (local_costmap/inflation_layer)
+        # 全部设成 enabled=0 —— 代价地图里不再有任何障碍物，规划出来的路径会
+        # 直接穿墙、紧贴墙走。
+        # ★ 本文件由 grasp.sh / 4-test.sh 通过 `roslaunch robot_slam grab.launch` 启动，
+        #   也就是说【一按 1 就会把避障关掉】，然后开始往写死的 16 个点位跑，
+        #   中途还有 3 处 navi.end() 不看传感器的盲退（-0.3 m/s × 8 s ≈ 2.4 m）。
+        #   D9 当时只修了 pub_point.py（3-amcl_test.sh 走的那条），漏了这里。
+        # 如需恢复厂商原行为，把下面三行的 # 去掉即可。
+        # ------------------------------------------------------------------
+        # local_obstacle_client.update_configuration({"enabled": 0})
+        # global_static_client.update_configuration({"enabled": 0})
+        # local_inf_client.update_configuration({"enabled": 0})
         navi.goto(goals[12])
         navi.goto(goals[0])
         # navi.toggle_tracking()
