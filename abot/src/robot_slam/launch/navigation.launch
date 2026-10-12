@@ -1,7 +1,11 @@
 <launch>
   <param name="use_sim_time" value="false" />
 
-  <arg name="map_name" default="my_lab.yaml" />
+  <!-- 2026-10-12：换成自建的本房间地图。原先默认 my_lab.yaml 是【厂商的图】，
+       拿别的房间的图去定位，AMCL 会飘、路径规划不可信 —— 跑起来看着能动，
+       实际是错的，比不动更危险。my_home 已肉眼确认与本房间一致。
+       厂商原图仍在 maps/ 下，要退回就把这一行改回 my_lab.yaml。 -->
+  <arg name="map_name" default="my_home.yaml" />
 
   <node name="map_server" pkg="map_server" type="map_server" args="$(find robot_slam)/maps/$(arg map_name)"/>
 

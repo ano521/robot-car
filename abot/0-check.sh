@@ -60,10 +60,14 @@ done
 
 hr; echo " 3/7  串口与相机设备"; hr
 for d in /dev/abot_driver /dev/rplidar; do
-  if [ -L "$d" ]; then
-    ok "$d  ->  $(readlink -f "$d" 2>/dev/null)"
-  elif [ -e "$d" ]; then
-    ok "$d 存在"
+  # ★ 2026-10-12 教训：软链接存在 ≠ 设备存在！
+  #   旧版写的是 `if [ -L "$d" ]` —— 悬空软链接也满足 -L，于是照样打印 [OK]，
+  #   把「适配器已经掉了」伪装成「一切正常」。必须先用 -e（会跟随软链接）判。
+  if [ -e "$d" ]; then
+    ok "$d  ->  $(readlink -f "$d" 2>/dev/null)（真实存在）"
+  elif [ -L "$d" ]; then
+    no "$d -> $(readlink "$d") 是【悬空软链接】！目标不存在"
+    echo "         适配器没枚举出来 —— 查 USB 线与供电，或重启"
   else
     no "$d 不存在"
   fi
@@ -79,24 +83,44 @@ echo "  正在占用串口的进程:"
 pgrep -a -f "rplidar|abot_driver" 2>/dev/null || echo "    （无）"
 
 hr; echo " 4/7  地图文件"; hr
-for f in "$WS/src/robot_slam/maps/my_lab.pgm" "$WS/src/robot_slam/maps/my_lab.yaml" \
-         "$WS/maps/my_room.pgm" "$WS/maps/my_room.yaml"; do
+# ★ 2026-10-12 改：不再写死 my_lab，改成【从 navigation.launch 读当前用的是哪张】。
+#   起因：导航默认图已换成自建的 my_home.yaml，而这段体检还在查厂商的 my_lab，
+#   于是"图坏了"这种事会被漏报 —— 查的和用的不是同一张，等于没查。
+#   从 launch 里读出来还有个好处：以后再换图，这里自动跟上，不会再脱节。
+NAV="$WS/src/robot_slam/launch/navigation.launch"
+MAPNAME=$(sed -n 's/.*<arg[[:space:]]*name="map_name"[[:space:]]*default="\([^"]*\)".*/\1/p' "$NAV" 2>/dev/null | head -1)
+echo "  navigation.launch 里 map_name 默认 = ${MAPNAME:-（读不到！）}"
+if [ -z "$MAPNAME" ]; then
+  no "读不到 map_name —— navigation.launch 改了写法或有语法错"
+else
+  MAPY="$WS/src/robot_slam/maps/$MAPNAME"
+  echo "  ⇒ 导航实际在用: $MAPY"
+  [ -s "$MAPY" ] && ok "$MAPNAME 存在（$(stat -c%s "$MAPY") 字节）" \
+                 || no "$MAPY 缺失或 0 字节 —— 地图根本加载不起来"
+  echo
+  echo "  它的内容:"
+  sed 's/^/    /' "$MAPY" 2>/dev/null
+  # ★ C2 那个坑：yaml 里的 image 必须是【绝对路径】且指向真实存在的 pgm
+  IMG=$(grep '^image:' "$MAPY" 2>/dev/null | sed 's/^image:[[:space:]]*//')
+  echo
+  echo "  yaml 里 image 指向: $IMG"
+  if [ -n "$IMG" ]; then
+    [ -f "$IMG" ] && ok "这个 pgm 真实存在（map_server 应该能起来了）" \
+                  || no "这个 pgm 不存在！地图加载还是会失败（C2 复发）"
+  fi
+fi
+
+echo
+echo "  全部地图文件（含备份，不参与导航的也列出来）:"
+for f in "$WS/src/robot_slam/maps/"*.pgm "$WS/src/robot_slam/maps/"*.yaml \
+         "$WS/maps/"*.pgm "$WS/maps/"*.yaml; do
+  [ -e "$f" ] || continue
   if [ -s "$f" ]; then
-    ok "$(basename "$f")  $(stat -c%s "$f") 字节"
+    ok "$(echo "$f" | sed "s#$WS/##")  $(stat -c%s "$f") 字节"
   else
-    no "$f 缺失或 0 字节"
+    no "$(echo "$f" | sed "s#$WS/##") 是 0 字节"
   fi
 done
-echo
-echo "  my_lab.yaml 的内容:"
-sed 's/^/    /' "$WS/src/robot_slam/maps/my_lab.yaml" 2>/dev/null
-IMG=$(grep '^image:' "$WS/src/robot_slam/maps/my_lab.yaml" 2>/dev/null | sed 's/^image:[[:space:]]*//')
-echo
-echo "  yaml 里 image 指向: $IMG"
-if [ -n "$IMG" ]; then
-  [ -f "$IMG" ] && ok "这个 pgm 真实存在（map_server 应该能起来了）" \
-                || no "这个 pgm 不存在！map_server 还是会崩"
-fi
 
 hr; echo " 5/7  模型与资源文件"; hr
 while read -r f; do
