@@ -155,7 +155,7 @@ export ROS_MASTER_URI=http://localhost:11311
 |---|---|
 | **🚨 `grasp.sh` 是厂商的整套演示剧本，不是"导航+抓取"** | 第 7 个标签页 `roslaunch robot_slam grab.launch` → 起 `nav.py`，里面等着 `input("Please enter 1 to continue: ")`。**这是唯一的安全闸。** |
 | **🚨 D9 只修了半条** | 同样的三行 `update_configuration({"enabled": 0})`（关掉代价地图的障碍物层/静态地图层/膨胀层 ⇒ 路径穿墙）在**三个文件**里都有：`pub_point.py`（✅ 10-10 已注释）、**`nav.py`（❌ 还活着）**、**`vl_nav.py`（❌ 还活着）**。<br>`3-amcl_test.sh` 走的是 `pub_point.py` ⇒ 所以第 3 步验出"避障正常"**只证明了那一条路**；`grasp.sh` / `4-test.sh` 走的 `nav.py`，**一按 `1` 照样关避障**。<br>**✅ 已把 `nav.py` 和 `vl_nav.py` 一并注释掉**，全工作区 grep `update_configuration` + `enabled` **已无未注释调用**；三个文件均过 `ast.parse`。 |
-| **🚨 `nav.py` 还有别的危害** | ① 往 `grab.launch` 里**写死的 16 个坐标**跑 —— 那是**厂商实验室**的点位<br>② **3 处 `navi.end()` 盲退**：`linear.x = -0.3` × 8 s ≈ **2.4 米**，全程不看传感器<br>③ 依次触发 `/grab`、`/put`，**动机械臂** |
+| **🚨 `nav.py` 还有别的危害** | ① 往 `grab.launch` 里**写死的 16 个坐标**跑 —— 那是**厂商实验室**的点位<br>② **5 处 `navi.end()` 盲退**：`linear.x = -0.3` × 0.9 s ≈ **0.27 米**，全程不看传感器<br>　⚠️ **2026-10-15 更正**：原写"3 处 × 8 s ≈ 2.4 米"，把 `while time1 <= 8` 的循环次数当成了秒数 —— 实际 9 次 × `sleep(0.1)` = 0.9 s。**方向仍是盲的，结论不变**<br>③ 依次触发 `/grab`、`/put`，**动机械臂** |
 | **⇒ 结论** | **`grasp.sh` ≈「在厂商房间里跑一遍厂商的剧本」。** 想让它在本房间自跑，得先量点位、换 `grab.launch` 的 `goalList`。**在那之前别按 `1`**；只想让它自己走过去，用 `2D Nav Goal`（第 3.5 步）。 |
 | **⭐ B1 真因找到并已修（17:2x）** | 用户截来第 4 个标签页（`multi_yolo`），日志写死：`Starting 'head_camera' (/dev/video2) at 640x480 via mmap (yuyv) at 30 FPS` → `[ERROR] VIDIOC_STREAMON error 5, Input/output error` → `process has died`。<br>⇒ **`/usb_cam2/image_raw` 从来没人发过**，RViz 的 `No Image` 不是"话题配错"，是**那个话题不存在**。<br>**根因**：`v4l2-ctl -d /dev/video2 --list-formats-ext` 实测 —— 640×480 下 **MJPG 和 YUYV 都只到 25 fps**，而 `usb_cam` 的 `framerate` **默认 30**，`usb_cam.launch` 里又没写。请求一个不存在的帧率 ⇒ STREAMON 直接 EIO。<br>**✅ 已修**：`yolov8_ros/launch/usb_cam.launch` 显式加 `<param name="framerate" value="25" />`，**已同步到 U 盘（md5 一致）**。**尚未上机验证。** |
 | **排查中排除掉的**（省得重走） | ① **不是设备被占** —— 全仓库只有 `yolov8_ros/launch/usb_cam.launch` 用 `video2`，其余全用 `video0`；`grasp.sh` 其它标签页没有一个开相机；无 `cv2.VideoCapture` 直连代码。<br>② **不是设备号错** —— `video2` 是摄像机 B 的主采集节点（`video3` 是它的元数据通道），能打开、能设成 640×480，**是到"开流"才失败**。<br>③ 那条 calibration `[WARN]` 是没做标定，**不是故障**。<br>④ 两台相机挂在**同一个 USB 控制器** `usb-3610000.xhci` 的 2.1 / 2.3 口 —— 以后再遇"开两台坏一台"先怀疑总线带宽。 |
@@ -292,7 +292,7 @@ AMCL 不知道机器人在哪，`2D Nav Goal` 给出去它也不知道往哪走�
 
 | 文件 | 改动 | 在 U 盘上？ |
 |---|---|---|
-| `abot/src/robot_slam/scripts/nav.py` | **D9 补修**：注释掉等价的 3 行 `update_configuration({"enabled": 0})`（旧行号 201–203），并写下危害说明（`grasp.sh`/`4-test.sh` 经 `grab.launch` 启动它 + 3 处盲退 + 写死的厂商点位） | ✅ |
+| `abot/src/robot_slam/scripts/nav.py` | **D9 补修**：注释掉等价的 3 行 `update_configuration({"enabled": 0})`（旧行号 201–203），并写下危害说明（`grasp.sh`/`4-test.sh` 经 `grab.launch` 启动它 + 5 处盲退 + 写死的厂商点位） | ✅ |
 | `abot/src/robot_slam/scripts/vl_nav.py` | 同上（旧行号 199–201）。该文件**无任何 launch/sh/文档引用**，属顺手拆雷 | ✅ |
 | `abot/src/yolov8_ros/launch/usb_cam.launch` | **B1 尝试修复**：加 `<param name="framerate" value="25" />`（相机 640×480 只到 25 fps，`usb_cam` 默认要 30 ⇒ STREAMON EIO）。**❌ 上机验证失败**，见下节 | ✅（25 fps 那版） |
 | `docs/上机调试问题汇总.md` | D9 表格行改写为"三处文件" + 详解段补记；新增「B1 续」小节（真因、实测表格、已排除项、后备方案） | — 文档只在 D 盘 |
@@ -422,3 +422,31 @@ mjpeg:    unable to decode APP fields: Invalid data found when processing input
 | ② `grab.launch` 的 16 个点位是厂商实验室的（3×3 货架网格 + 接近点） | ❌ **仍待办** —— 要在本房间重新量 |
 
 ⇒ **下一步顺序：① 先跑第 3.5 步（`3-amcl_test.sh` + `2D Nav Goal` 手给近点）验"局部规划器 → 底盘真动"这一段（从未实跑过）→ ② 再量 16 个点位 → ③ 才上全程。**
+
+---
+
+### 下次开工 SOP（照做，别跳步）
+
+```
+① 机器人开机后，先等 30～60 秒          ← 等 udev 建完设备，别抢跑（C9 的教训）
+② 验设备（两条）
+     ls -l /dev/rplidar /dev/abot_driver
+     ls /dev/ttyUSB*                      ← 三个都要在，软链接不能悬空
+③ cd /media/abot/999/abot
+   ./killall.sh                           ← 清残留进程（C3/D10）
+   ./3-amcl_test.sh                       ← 只上导航，不带机械臂，最安全的增量
+④ 起来后第一件事验雷达
+     rostopic hz /scan                    ← 出 average rate: 10 才算真起来了
+⑤ RViz 里给 2D Pose Estimate              ← 每次 AMCL 启动都必须做
+⑥ 给一个近的、直的 2D Nav Goal，盯三件事：
+     它真的动了？ 绕开障碍了？ 停到点了？   ← ★ 第 3.5 步，这段从未实跑过
+⑦ ⑥ 过了才谈得上量点位、才谈得上全程
+```
+
+**安全红线（任何时候都成立）：**
+
+- `/scan` 没数据时，**绝不能**按 `grasp.sh` 第 7 个标签页那个 `1`
+  （代价地图是空的 = 闭着眼往写死的坐标跑）
+- `nav.py` 有 **5 处 `navi.end()` 盲退**（`linear.x=-0.3` 连发 0.9 秒 ≈ 0.27 米，不看传感器）
+  —— 数值 2026-10-15 已更正，见本文件第三节之二第 158 行
+- 要动机械臂时，人别站在臂展范围内
