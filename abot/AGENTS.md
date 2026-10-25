@@ -1,0 +1,58 @@
+# AGENTS.md
+
+> Codex 会自动读本文件。这里是**最短的硬约束**，完整背景见 [`交接说明.md`](交接说明.md)。
+
+## 这是什么
+
+ABOT-M1-ATK（Jetson + ROS 1 Noetic）移动抓取机器人。厂商代码只能在他们自己的
+实验室房间跑，本项目的工作是**把它改到我们自己的房间能用**。
+
+- 车上工作区：`/media/abot/999/abot`（＝这个 U 盘）
+- Windows 仓库：`D:\Program Files\robot car\abot`
+- 私有仓库：`ano521/robot-car`，分支 `main`
+
+## 硬约束（不要违反）
+
+1. **车内 `/etc`、`/home/abot` 一个字都不改**（含 udev 规则、`.bashrc`、`profile.d`）。
+   所有改动只落在工作区（U 盘）里。
+2. **不要在 `/home/abot` 下建指向 U 盘的软链接。**
+3. **不要在 `src/` 下建 `build`/`install`/`log`** —— 那会让 `rospack find` 解析到错误路径。
+4. **工作区改动要 U 盘和 Windows 仓库两边都落**，没有自动同步。
+5. **别去 `rosdep init`**（`the rosdep view is empty` 是无害告警）。
+
+## 上机前必做
+
+```bash
+cd /media/abot/999/abot
+./0-check.sh          # 只读体检
+./killall.sh          # 清残留进程
+ls -l /dev/ttyUSB*    # 必须看到 ttyUSB0/1/2，软链接不能悬空
+```
+
+**新开的终端里手敲任何 ROS 命令之前，先 `source /media/abot/999/abot/ros-env.sh`**
+—— 环境里预置了旧热点的死 IP，不 source 的话命令会**无限卡住而且不报错**。
+
+## 先读这些再动手
+
+| 文件 | 内容 |
+|---|---|
+| `docs/上机操作清单.md` | 带车操作单（敲什么 / 看到什么算对 / 不对怎么办）。U 盘上也有副本（`abot/docs/`） |
+| `docs/上机调试问题汇总.md` | 编号问题总账（A/B/C/D），含根因。改前先查，很多"像 bug"的是已查清的环境问题 |
+| `docs/手册索引.md` | 厂商手册索引；手册里的路径和包名和仓库**对不上**，别照抄 |
+
+## 红线
+
+1. `/scan` 没数据时**绝不能**按 `grasp.sh` 第 7 页那个 `1`（代价地图空着＝瞎跑）。
+2. `nav.py` 有 **5 处 `navi.end()` 盲退**（`-0.3 m/s` × 0.9 s ≈ 0.27 m，不看传感器）。
+3. `grasp.sh` **会动机械臂且不看人**。
+4. 别打开 `update_configuration({"enabled": 0})` 那几行（会让路径穿墙，见问题汇总 D9）。
+
+## 当前状态 / 最要紧的未完成项
+
+✅ `src/robot_slam/launch/grab.launch` 里的路线点位**已换成我们房间实测的**（2026-10-15）。
+本房间 10 个位置 → nav.py 的 15 个槽位，映射表在 `5-measure-point.sh` 的 `SLOT_SRC`，
+原始数据在 `points_measured.csv`。
+
+⚠️ **但换完点位后从未实跑验证过。** 接手第一件事：
+`./3-amcl_test.sh` → RViz 里给 `2D Pose Estimate` → 用 `2D Nav Goal` **逐点验这 10 个位置**
+（能到、停得稳、朝向对）。全过了再谈按 `1` 跑全程。详见 `交接说明.md` 第 6 节。
