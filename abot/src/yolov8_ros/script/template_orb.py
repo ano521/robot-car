@@ -72,11 +72,21 @@ def default_objects_path():
 # 匹配核心（不依赖 ROS，方便离线自检）
 # ----------------------------------------------------------------------
 class TemplateMatcher(object):
-    def __init__(self, objects_path, n_features=600, nndr=0.75, min_inliers=12):
+    def __init__(self, objects_path, n_features=600, nndr=0.75, min_inliers=12,
+                 scales=(1.0, 0.5, 0.25), min_side=48):
+        """scales: 每张模板预先生成这几档缩放，用来对付"小物块"。
+
+        为什么需要：ORB 不是尺度不变的（SIFT 才是）。模板图 ~1000px，
+        实物在 640x480 画面里可能只有几十 px，差 10 倍以上就匹配不上，
+        症状正是"大的能认、小的认不出"（2026-10-28 实测）。
+        多档模板让小物块去匹配小尺寸模板，尺度就对齐了。
+        """
         self.nndr = float(nndr)
         self.min_inliers = int(min_inliers)
         self.orb = cv2.ORB_create(nfeatures=int(n_features))
         self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        self.scales = tuple(float(s) for s in scales)
+        self.min_side = int(min_side)
         self.templates = []
         self._load(objects_path)
 
@@ -90,34 +100,58 @@ class TemplateMatcher(object):
             if img is None:
                 print('[!!] 读不出来（路径或编码问题）：%s' % path)
                 continue
-            kp, des = self.orb.detectAndCompute(img, None)
-            if des is None or len(kp) < 8:
-                print('[!!] 特征太少（%d 个），这张没进库：%s'
-                      % (0 if kp is None else len(kp), os.path.basename(path)))
-                continue
-            h, w = img.shape[:2]
-            self.templates.append({
-                'id': oid,
-                'path': path,
-                'w': float(w),
-                'h': float(h),
-                'pts': np.float32([k.pt for k in kp]),
-                'des': des,
-            })
-            print('[ok] 模板 %d  %dx%d  %d 个特征  %s'
-                  % (oid, w, h, len(kp), os.path.basename(path)))
+            h0, w0 = img.shape[:2]
+            got = 0
+            for s in self.scales:
+                sw, sh = int(round(w0 * s)), int(round(h0 * s))
+                if min(sw, sh) < self.min_side:
+                    continue
+                if s == 1.0:
+                    scaled = img
+                else:
+                    # INTER_AREA 缩小时质量最好，别用 INTER_LINEAR（会糊掉纹理）
+                    scaled = cv2.resize(img, (sw, sh), interpolation=cv2.INTER_AREA)
+                kp, des = self.orb.detectAndCompute(scaled, None)
+                if des is None or len(kp) < 8:
+                    print('[!]  id=%d @%.2f 特征太少（%d），跳过这一档'
+                          % (oid, s, 0 if kp is None else len(kp)))
+                    continue
+                self.templates.append({
+                    'id': oid,
+                    'path': path,
+                    'scale': s,
+                    'w': float(sw),
+                    'h': float(sh),
+                    'pts': np.float32([k.pt for k in kp]),
+                    'des': des,
+                })
+                got += 1
+                if s == 1.0:
+                    print('[ok] 模板 %d  %dx%d  %d 个特征  %s'
+                          % (oid, sw, sh, len(kp), os.path.basename(path)))
+            if got == 0:
+                print('[!!] id=%d 所有尺度都没提取到特征，这张没进库：%s'
+                      % (oid, os.path.basename(path)))
 
         if not self.templates:
             raise RuntimeError('一张模板都没加载成功，检查目录：%s' % objects_path)
 
+        n_ids = len(set(t['id'] for t in self.templates))
+        print('[ok] 共 %d 张模板 -> %d 组特征（尺度 %s）'
+              % (n_ids, len(self.templates), ','.join('%g' % s for s in self.scales)))
+
     def detect(self, gray, max_objects=3, min_area_px=400.0, img_size=None):
-        """返回 [(id, w, h, H, inliers, good)]，按 inliers 从多到少。"""
+        """返回 [(id, w, h, H, inliers, good, scale)]，按 inliers 从多到少。
+
+        同一张模板有多档尺度，可能同时命中 —— 只保留内点最多的那一档，
+        否则 /objects 里会出现同一个 id 的两条记录，下游会重复抓。
+        """
         kp, des = self.orb.detectAndCompute(gray, None)
         if des is None or len(kp) < 8:
             return []
         scene_pts = np.float32([k.pt for k in kp])
 
-        found = []
+        best = {}     # id -> (inliers, item)
         for t in self.templates:
             try:
                 pairs = self.bf.knnMatch(t['des'], des, k=2)
@@ -128,10 +162,10 @@ class TemplateMatcher(object):
             for pair in pairs:
                 if len(pair) < 2:
                     continue
-                best, second = pair
+                best_m, second = pair
                 # Lowe 比值检验：最佳比次佳小很多，才算可信匹配
-                if best.distance < self.nndr * second.distance:
-                    good.append(best)
+                if best_m.distance < self.nndr * second.distance:
+                    good.append(best_m)
 
             if len(good) < max(4, self.min_inliers):
                 continue
@@ -162,8 +196,11 @@ class TemplateMatcher(object):
                 if xs.max() < 0 or ys.max() < 0 or xs.min() > iw or ys.min() > ih:
                     continue
 
-            found.append((t['id'], t['w'], t['h'], H, inliers, len(good)))
+            item = (t['id'], t['w'], t['h'], H, inliers, len(good), t['scale'])
+            if t['id'] not in best or inliers > best[t['id']][0]:
+                best[t['id']] = (inliers, item)
 
+        found = [v[1] for v in best.values()]
         found.sort(key=lambda x: -x[4])
         return found[:max_objects]
 
@@ -171,7 +208,7 @@ class TemplateMatcher(object):
 def to_float_array(found):
     """把 detect() 的结果摊成 /objects 的 12-float 格式。"""
     data = []
-    for oid, w, h, H, _inliers, _good in found:
+    for oid, w, h, H, _inliers, _good, _scale in found:
         data.append(float(oid))
         data.append(float(w))
         data.append(float(h))
@@ -183,12 +220,13 @@ def to_float_array(found):
 
 
 def draw_debug(gray_bgr, found):
-    for oid, w, h, H, inliers, _good in found:
+    for oid, w, h, H, inliers, _good, scale in found:
         corners = cv2.perspectiveTransform(
             np.float32([[[0, 0]], [[w, 0]], [[w, h]], [[0, h]]]), H).astype(np.int32)
         cv2.polylines(gray_bgr, [corners], True, (0, 255, 0), 2)
         x, y = corners[0][0]
-        cv2.putText(gray_bgr, 'id%d(%d)' % (oid, inliers), (int(x), int(y) - 6),
+        # 带尺度标注：@0.25 说明是靠 1/4 缩略模板认出来的（小物块）
+        cv2.putText(gray_bgr, 'id%d(%d)@%g' % (oid, inliers, scale), (int(x), int(y) - 6),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     return gray_bgr
 
@@ -196,45 +234,58 @@ def draw_debug(gray_bgr, found):
 # ----------------------------------------------------------------------
 # 离线自检：不需要 ROS
 # ----------------------------------------------------------------------
-def selftest(objects_path, n_features, nndr, min_inliers):
+def selftest(objects_path, n_features, nndr, min_inliers, scales):
     print('=== 装载模板（%s）===' % objects_path)
-    matcher = TemplateMatcher(objects_path, n_features, nndr, min_inliers)
-    print('\n共装载 %d 张\n' % len(matcher.templates))
+    matcher = TemplateMatcher(objects_path, n_features, nndr, min_inliers, scales=scales)
+    print('\n共装载 %d 组特征（%d 张模板 x 尺度 %s）\n'
+          % (len(matcher.templates),
+             len(set(t['id'] for t in matcher.templates)),
+             ','.join('%g' % s for s in matcher.scales)))
+
+    # 同一张模板有多档尺度，自检只跑一次（按 id 去重）
+    uniq = {}
+    for t in matcher.templates:
+        uniq.setdefault(t['id'], t['path'])
+    items = sorted(uniq.items())
 
     print('=== 自匹配：每张模板当输入图，理应以高分认回自己 ===')
     print('    （若某张认不回自己，说明 ORB 在这张图上特征不够，得换图）')
     ok = 0
-    for t in matcher.templates:
-        img = cv2.imread(t['path'], cv2.IMREAD_GRAYSCALE)
+    for oid, path in items:
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
         if img is None:
-            print('  [!!] id=%d 读不出来' % t['id'])
+            print('  [!!] id=%d 读不出来' % oid)
             continue
         h, w = img.shape[:2]
         found = matcher.detect(img, max_objects=5, min_area_px=0.0, img_size=(w, h))
-        got = [(f[0], f[4]) for f in found]
-        self_hit = [g for g in got if g[0] == t['id']]
+        got = [(f[0], f[4], f[6]) for f in found]
+        self_hit = [g for g in got if g[0] == oid]
         if self_hit:
             ok += 1
             mark = 'OK '
         else:
             mark = '!! '
-        others = [(i, n) for (i, n) in got if i != t['id']]
-        print('  %sid=%-2d 命中=%s%s' % (mark, t['id'], self_hit or '无',
-                                        ('   串到了 %s' % others) if others else ''))
-    print('\n自匹配成功 %d/%d\n' % (ok, len(matcher.templates)))
+        others = [g for g in got if g[0] != oid]
+        print('  %sid=%-2d 命中=%s%s'
+              % (mark, oid,
+                 ('id%d/内点%d/尺度%g' % self_hit[0]) if self_hit else '无',
+                 ('   串到了 %s' % [(g[0], g[1]) for g in others]) if others else ''))
+    print('\n自匹配成功 %d/%d\n' % (ok, len(items)))
 
     print('=== 串号对照（重点看 4 苹果 / 9 红枣）===')
     print('    做法：拿 id=A 的图当输入，看它会不会同时认成 B')
-    for a in matcher.templates:
-        img = cv2.imread(a['path'], cv2.IMREAD_GRAYSCALE)
+    for oid, path in items:
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
         if img is None:
             continue
         h, w = img.shape[:2]
         found = matcher.detect(img, max_objects=5, min_area_px=0.0, img_size=(w, h))
         ids = [f[0] for f in found]
         if len(ids) > 1:
-            print('  id=%-2d 同时命中 %s   <- 这两张模板太像' % (a['id'], ids))
+            print('  id=%-2d 同时命中 %s   <- 这两张模板太像' % (oid, ids))
     print('\n=== 完了。上面没有 "!!" 和串号行，就可以上机试 ===')
+    print('    注意：这里喂的是原尺寸模板图，所以命中的尺度基本都是 1。')
+    print('    小物块能不能认，要靠上机看 [orb] 行里的 @0.5 / @0.25。')
 
 
 # ----------------------------------------------------------------------
@@ -258,8 +309,11 @@ def run_node():
     objects_topic = rospy.get_param('~objects_topic', '/objects')
     debug_topic = rospy.get_param('~debug_image_topic', '')   # 空 = 不发调试图
     log_period = float(rospy.get_param('~log_period', 1.0))
+    # 尺度档位：默认三档，覆盖 4 倍尺度范围。只认大目标时可设 ~scales:=1.0 把帧率提回 25 Hz
+    scales_str = rospy.get_param('~scales', '1.0,0.5,0.25')
+    scales = tuple(float(x) for x in str(scales_str).replace(' ', '').split(',') if x)
 
-    matcher = TemplateMatcher(objects_path, n_features, nndr, min_inliers)
+    matcher = TemplateMatcher(objects_path, n_features, nndr, min_inliers, scales=scales)
 
     pub = rospy.Publisher(objects_topic, Float32MultiArray, queue_size=10)
     pub_dbg = rospy.Publisher(debug_topic, Image, queue_size=1) if debug_topic else None
@@ -292,7 +346,7 @@ def run_node():
             state['fps_t0'] = now
             if found:
                 rospy.loginfo('[orb] %s  (%.1f Hz)'
-                              % (', '.join('id%d/%d' % (f[0], f[4]) for f in found), fps))
+                              % (', '.join('id%d/%d@%g' % (f[0], f[4], f[6]) for f in found), fps))
             else:
                 rospy.loginfo('[orb] 无目标  (%.1f Hz)' % fps)
 
@@ -314,7 +368,8 @@ def main():
     if '--selftest' in sys.argv:
         args = [a for a in sys.argv[1:] if not a.startswith('--')]
         path = args[0] if args else default_objects_path()
-        selftest(path, n_features=600, nndr=0.75, min_inliers=12)
+        selftest(path, n_features=600, nndr=0.75, min_inliers=12,
+                 scales=(1.0, 0.5, 0.25))
         return
     run_node()
 
