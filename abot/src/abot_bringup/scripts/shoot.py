@@ -6,11 +6,16 @@ import time
 from std_msgs.msg import String
 
 # 定义串口参数
-#serialPort = "/dev/ttyUSB2"
+# 2026-10-28 修：原来这一行是 serial.Serial(port= baudrate=baudRate, ...)，
+# 等号后面直接跟了下一个关键字参数 —— 少一个值，整份文件语法都不成立（D 系列）。
+# 现在恢复成原来被注释掉的 serialPort 变量。⚠️ /dev/ttyUSB2 是厂商原值，
+# 本车只有 abot_driver(ttyUSB1)、rplidar(ttyUSB0) 两个 udev 别名，
+# 射击模块接的是哪个口要上机用 ls /dev/ttyUSB* 现看，别照抄。
+serialPort = "/dev/ttyUSB2"
 baudRate = 9600
 
 # 初始化串口
-ser = serial.Serial(port= baudrate=baudRate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE)
+ser = serial.Serial(port=serialPort, baudrate=baudRate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE)
 
 # 定义机器人射击类
 class AbotShoot:

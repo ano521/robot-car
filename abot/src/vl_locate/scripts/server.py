@@ -73,10 +73,18 @@ class VLM:
                 ]
             }
         ]
-        
+        # 2026-10-28 修 D6：原来 api_key='' / model='' 是硬编码空串，调用必然失败。
+        # 现在 key 只从环境变量读（⚠️ 绝不要把真 key 写进仓库），
+        # model 允许用环境变量覆盖，默认 qwen-vl-max。
+        api_key = os.environ.get('DASHSCOPE_API_KEY', '')
+        model = os.environ.get('DASHSCOPE_VL_MODEL', 'qwen-vl-max')
+        if not api_key:
+            rospy.logerr("未设置环境变量 DASHSCOPE_API_KEY，无法调用 dashscope")
+            return None
+
         response = MultiModalConversation.call(
-            api_key='',
-            model='', 
+            api_key=api_key,
+            model=model,
             messages=messages
         )
         

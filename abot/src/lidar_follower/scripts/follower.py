@@ -20,8 +20,8 @@ class Follower:
         rospy.on_shutdown(self.shutdown)
 
     def positionCallback(self, point):
-	if(not(self.active)):
-	    return #if we are not active we will return imediatly without doing anything
+        if(not(self.active)):
+            return #if we are not active we will return imediatly without doing anything
 
         angleX = point.x
         angleY = point.y
@@ -51,7 +51,7 @@ class Follower:
 class simplePID:
     def __init__(self, target, P, I, D):
         if(not(np.size(P)==np.size(I)==np.size(D)) or ((np.size(target)==1) and np.size(P)!=1) or (np.size(target )!=1 and (np.size(P) != np.size(target) and (np.size(P) != 1)))):
-	        raise TypeError('input parameters shape is not compatable')   
+            raise TypeError('input parameters shape is not compatable')
         rospy.loginfo('PID initialised with P:{}, I:{}, D:{}'.format(P,I,D))    
         self.Kp = np.array(P)
         self.Ki = np.array(I)
@@ -67,13 +67,13 @@ class simplePID:
         if(np.size(current_value) != np.size(self.setPoint)):
             raise TypeError('current_value and target do not have the same shape')
         if(self.timeOfLastCall is None):
-			# the PID was called for the first time. we don't know the deltaT yet
-			# no controll signal is applied
-			self.timeOfLastCall = time.clock()
-			return np.zeros(np.size(current_value))	 
+            # the PID was called for the first time. we don't know the deltaT yet
+            # no controll signal is applied
+            self.timeOfLastCall = time.time()
+            return np.zeros(np.size(current_value))
         error = self.setPoint - current_value
         P = error
-        current_time = time.clock()
+        current_time = time.time()
         deltaT = (current_time - self.timeOfLastCall)
         self.integrator = self.integrator + (error*deltaT)
         I = self.integrator

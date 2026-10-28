@@ -13,7 +13,10 @@
 	</node>
 
 	<node name="print_objects_detected" pkg="find_object_2d" type="print_objects_detected" output="screen" />
-	<include file="$(find track_tag)/launch/usb_cam_with_calibration.launch" />
+	<!-- 2026-10-28 修 D4：原写 $(find track_tag)，本仓库没有 track_tag 这个包。
+	     能起 /usb_cam/image_raw 且带标定入口的是 cam_track（设备 /dev/video0，
+	     话题正好等于上面 image_topic 的默认值），所以换成它。 -->
+	<include file="$(find cam_track)/launch/usb_cam_with_calibration.launch" />
 
 	
 </launch>

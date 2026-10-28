@@ -1,4 +1,8 @@
 <launch>
-<node name="yolov8_ros_node" pkg="yolov8_ros" type="yolo_detect.py" output="screen"/>
+<!-- 2026-10-28 修 D1：原 type="yolo_detect.py" 在包里根本不存在
+     （包内只有 multi_yolo.py / grab.py / put.py / arm_move.py …），
+     roslaunch 会在启动阶段直接报 "cannot find node" 而失败。
+     本文件现在与 multi_yolo.launch 等价，保留它是为了不破坏旧命令和文档里的引用。 -->
+<node name="yolov8_ros_node" pkg="yolov8_ros" type="multi_yolo.py" output="screen"/>
 <include file="$(find yolov8_ros)/launch/usb_cam.launch"/>
 </launch>

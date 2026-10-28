@@ -1,13 +1,23 @@
 <launch>
+  <!-- ================================================================
+       2026-10-28 修 D2（包名）：原三处 $(find abot_slam) 已改成 robot_slam。
 
+       ⚠️ 但本文件【仍然跑不起来】，不是包名问题，是本仓库缺文件：
+         - $(find abot_bringup)/launch/robot_with_imu.launch  —— 不存在
+           （abot_bringup/launch 里只有 bringup/model/rplidar/shoot）
+         - robot_slam/launch/include/hector_mapping.launch.xml —— 不存在
+         - robot_slam/launch/include/geotiff_mapper.launch.xml —— 不存在
+       要用 hector，得先把 hector_mapping 包装到车上、再补这三个 include。
+       在那之前建图请用 1-gmapping.sh（gmapping，已实测可用）。
+       ================================================================ -->
   <param name="use_sim_time" value="false" />
+
   <include file="$(find abot_bringup)/launch/robot_with_imu.launch"/>
 
+  <include file="$(find robot_slam)/launch/include/move_base.launch.xml" />
 
-  <include file="$(find abot_slam)/launch/include/move_base.launch.xml" />
-
-  <include file="$(find abot_slam)/launch/include/hector_mapping.launch.xml"/>
-  <include file="$(find abot_slam)/launch/include/geotiff_mapper.launch.xml">
+  <include file="$(find robot_slam)/launch/include/hector_mapping.launch.xml"/>
+  <include file="$(find robot_slam)/launch/include/geotiff_mapper.launch.xml">
     <arg name="trajectory_source_frame_name" value="scanmatcher_frame"/>
   </include>
 

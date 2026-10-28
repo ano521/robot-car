@@ -1,11 +1,12 @@
 <launch>
-
-
+  <!-- 2026-10-28 修 D2：原引用 $(find abot_slam)，本仓库没有这个包（叫 robot_slam），
+       以前 roslaunch 在解析阶段就报 "package 'abot_slam' not found" 直接退出。
+       注意：本文件同时起 move_base 和 gmapping，正常建图走 1-gmapping.sh
+       （-> robot_slam/gmapping.launch），这里保留只为让旧命令能解析。 -->
   <param name="use_sim_time" value="false" />
 
-  <include file="$(find abot_slam)/launch/include/move_base.launch.xml" />
+  <include file="$(find robot_slam)/launch/include/move_base.launch.xml" />
 
-  <include file="$(find abot_slam)/launch/gmapping.launch" />
+  <include file="$(find robot_slam)/launch/gmapping.launch" />
 
-  
 </launch>
