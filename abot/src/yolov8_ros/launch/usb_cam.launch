@@ -1,6 +1,12 @@
 <launch>
+  <!-- 2026-10-26：设备号改成 launch 参数，现场不用改文件就能试另一台相机。
+       手册第 10 章写明：/dev/video0 = 机械臂摄像头，/dev/video2 = 机器人前置摄像头。
+       本包一直用 video2。若抓取时画面不是桌面，先试：
+           roslaunch yolov8_ros multi_yolo.launch video:=/dev/video0
+       注意：video0 同一时刻只能被一个节点占用 —— 用 video0 时不要同时开 cam_track。 -->
+  <arg name="video" default="/dev/video2"/>
   <node name="usb_cam2" pkg="usb_cam" type="usb_cam_node" output="screen" >
-    <param name="video_device" value="/dev/video2" />
+    <param name="video_device" value="$(arg video)" />
     <param name="image_width" value="640" />
     <param name="image_height" value="480" />
     <!-- ★ 2026-10-12 改动：格式 yuyv → mjpeg，并显式指定 25 fps。

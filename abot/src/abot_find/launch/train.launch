@@ -1,8 +1,12 @@
 <launch>
     <arg name="gui" default="true"/>
     <arg name="image_topic" default="/usb_cam/image_raw"/>
-    <arg name="objects_path" default="/media/abot/999/abot/src/abot_find/object"/>
-    <arg name="settings_path" default="~/.ros/find_object_2d.ini"/>
+    <arg name="objects_path" default="$(find find_object_2d)/object"/>
+    <arg name="settings_path" default="$(find find_object_2d)/../../runtime/find_object_2d.ini"/>
+    <arg name="start_camera" default="true"/>
+    <arg name="camera_device" default="/dev/video0"/>
+    <arg name="pixel_format" default="yuyv"/>
+    <arg name="framerate" default="30"/>
 
 	<!-- Nodes -->
 	<node name="find_object_2d" pkg="find_object_2d" type="find_object_2d">
@@ -12,11 +16,17 @@
 		<param name="settings_path" value="$(arg settings_path)" type="str"/>
 	</node>
 
-	<node name="print_objects_detected" pkg="find_object_2d" type="print_objects_detected" output="screen" />
-	<!-- 2026-10-28 修 D4：原写 $(find track_tag)，本仓库没有 track_tag 这个包。
-	     能起 /usb_cam/image_raw 且带标定入口的是 cam_track（设备 /dev/video0，
-	     话题正好等于上面 image_topic 的默认值），所以换成它。 -->
-	<include file="$(find cam_track)/launch/usb_cam_with_calibration.launch" />
+	<node name="print_objects_detected" pkg="find_object_2d" type="print_objects_detected" output="screen">
+		<remap from="image" to="$(arg image_topic)"/>
+	</node>
+
+	<group if="$(arg start_camera)">
+		<include file="$(find cam_track)/launch/usb_cam_with_calibration.launch">
+			<arg name="video_device" value="$(arg camera_device)"/>
+			<arg name="pixel_format" value="$(arg pixel_format)"/>
+			<arg name="framerate" value="$(arg framerate)"/>
+		</include>
+	</group>
 
 	
 </launch>

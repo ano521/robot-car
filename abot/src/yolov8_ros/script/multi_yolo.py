@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-# 2026-10-28：shebang 由 python 改成 python3 —— 本文件用了 f-string（`rospy.loginfo(f"…")`），
-# 只可能是 py3 代码。若车上的 `python` 指向 py2，rosrun 直接 SyntaxError 起不来。
+# 2026-10-28：shebang 由 python 改为 python3 —— 本文件用了 f-string（`rospy.loginfo(f"…")`），
+# 只能是 py3。若车上 `python` 指向 py2，rosrun 会直接 SyntaxError 起不来，
+# 而 multi_yolo 仍是 grasp.sh 的视觉来源。订阅话题不动：multi_yolo.launch 里
+# 已用 <remap from="/usb_cam/image_raw" to="/usb_cam2/image_raw"/> 接好了，
+# 改代码反而会和那个 remap 打架。
 import rospy
 import cv2
 from sensor_msgs.msg import Image
@@ -12,21 +15,8 @@ class YOLOv8ROSNode:
     def __init__(self):
         rospy.init_node('yolov8_ros_node', anonymous=True)
         self.bridge = CvBridge()
-        # 权重路径原本写死 /home/abot/yolov8/yolov8n.pt（车内路径，仓库里没带这个文件），
-        # 文件不在时 ultralytics 直接抛 FileNotFoundError、节点秒退，所以留个参数口子：
-        #   rosparam set /yolov8_ros/model_path <车上看得到 yolov8n.pt 的绝对路径>
-        model_path = rospy.get_param('/yolov8_ros/model_path', '/home/abot/yolov8/yolov8n.pt')
-        self.model = YOLO(model_path)
-        # ★ 2026-10-28 修：原来订阅 '/usb_cam/image_raw'（相机 A / video0），
-        #   但本包 usb_cam.launch 起的节点叫 usb_cam2、发的是 /usb_cam2/image_raw
-        #   （相机 B / video2），RViz 的 Image 面板订的也是后者。
-        #   结果：YOLO 永远收不到一帧 —— RViz 里有画面，但 /yolov8_detections
-        #   一直是空的，grab.py / put.py 就永远等不到目标（看着像"卡住不动"）。
-        #   grasp.sh 里没有任何节点发 /usb_cam/image_raw，只有 3-amcl_test.sh
-        #   的 cam_track 会发。现在默认对齐到 usb_cam2，可用全局参数覆盖：
-        #   rosparam set /yolov8_ros/image_topic /usb_cam/image_raw
-        image_topic = rospy.get_param('/yolov8_ros/image_topic', '/usb_cam2/image_raw')
-        self.image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
+        self.model = YOLO('/home/abot/yolov8/yolov8n.pt')
+        self.image_sub = rospy.Subscriber('/usb_cam/image_raw', Image, self.image_callback)
         self.detection_pub = rospy.Publisher('/yolov8_detections', Detection, queue_size=10)
         
         # 定义感兴趣的类别

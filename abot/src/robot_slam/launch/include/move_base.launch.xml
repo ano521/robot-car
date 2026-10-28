@@ -14,6 +14,7 @@
     <param name="base_local_planner" value="" />
     <param name= "controller_frequency" value="10" type="double"/>-->
     <remap from="/cmd_vel" to="/cmd_vel" />
-    <remap from="/odom" to="/odom" />
+    <!-- abot_driver 发布 /wheel_odom；若保持 /odom，move_base 会订阅一个无发布者的话题。 -->
+    <remap from="/odom" to="/wheel_odom" />
   </node>
 </launch>

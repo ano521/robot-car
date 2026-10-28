@@ -36,6 +36,8 @@ class VLM:
         self.sub = rospy.Subscriber('/usb_cam/image_raw', ROSImage, self.top_view_shot)
         self.image_path = '/media/abot/999/abot/src/vl_locate/image/vlm_now.jpg'
         self.font = ImageFont.truetype("/media/abot/999/abot/src/vl_locate/config/SimHei.ttf", 32)
+        self.dashscope_api_key = os.environ.get('DASHSCOPE_API_KEY')
+        self.dashscope_model = os.environ.get('DASHSCOPE_MODEL')
         s = rospy.Service('vlm_detection', GetObject, self.handle_vlm_detection)
 
     def encode_image(self, image_path):
@@ -62,6 +64,16 @@ class VLM:
         self.img_bgr = self.imgmsg_to_cv2(image_msg)
 
     def yi_vision_api(self, prompt='检测图中红色方块'):
+        if not self.dashscope_api_key or not self.dashscope_model:
+            rospy.logerr(
+                'VLM is not configured: set DASHSCOPE_API_KEY and DASHSCOPE_MODEL '
+                'before starting vl_locate.'
+            )
+            return None
+        if not hasattr(self, 'img_bgr') or self.img_bgr is None:
+            rospy.logerr('No camera image has been received yet.')
+            return None
+
         cv2.imwrite(self.image_path, self.img_bgr)
         base64_image = self.encode_image(self.image_path)
         messages = [
@@ -73,18 +85,10 @@ class VLM:
                 ]
             }
         ]
-        # 2026-10-28 修 D6：原来 api_key='' / model='' 是硬编码空串，调用必然失败。
-        # 现在 key 只从环境变量读（⚠️ 绝不要把真 key 写进仓库），
-        # model 允许用环境变量覆盖，默认 qwen-vl-max。
-        api_key = os.environ.get('DASHSCOPE_API_KEY', '')
-        model = os.environ.get('DASHSCOPE_VL_MODEL', 'qwen-vl-max')
-        if not api_key:
-            rospy.logerr("未设置环境变量 DASHSCOPE_API_KEY，无法调用 dashscope")
-            return None
-
+        
         response = MultiModalConversation.call(
-            api_key=api_key,
-            model=model,
+            api_key=self.dashscope_api_key,
+            model=self.dashscope_model,
             messages=messages
         )
         

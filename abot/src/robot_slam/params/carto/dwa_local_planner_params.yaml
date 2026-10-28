@@ -1,29 +1,28 @@
 DWAPlannerROS:
 
-# Robot Configuration Parameters - Kobuki
-  max_vel_x: 0.4
-  min_vel_x: -0.4
+# ABOT 是差速底盘。厂商的最小速度/加速度过大，低速到点与转向时会顿挫、反复修正。
+  max_vel_x: 0.25
+  min_vel_x: -0.10
 
-  max_vel_y: 0.20
-  min_vel_y: -0.20
+  max_vel_y: 0.0
+  min_vel_y: 0.0
 
-  max_vel_trans: 0.4 
-  min_vel_trans: 0.2  
+  max_vel_trans: 0.25
+  min_vel_trans: 0.05
 
+  max_vel_theta: 0.8
+  min_vel_theta: 0.2
 
-  max_vel_theta: 2 
-  min_vel_theta: 1 
-  
-  acc_lim_x: 3 
-  acc_lim_theta: 3.0
-  acc_lim_y: 4 
+  acc_lim_x: 0.6
+  acc_lim_theta: 1.0
+  acc_lim_y: 0.0
 
   xy_goal_tolerance: 0.1
   yaw_goal_tolerance: 0.1
   latch_xy_goal_tolerance: false
 
 # Forward Simulation Parameters
-  sim_time: 2.0       
+  sim_time: 1.5
   vx_samples: 10      
   vy_samples: 0 
   vth_samples: 20
@@ -45,5 +44,5 @@ DWAPlannerROS:
   publish_traj_pc : true
   publish_cost_grid_pc: true
 
-# Differential-drive robot configuration - necessary?
-  holonomic_robot: true
+# 差速车不能横移；保持 false 才不会采样不可执行的横向轨迹。
+  holonomic_robot: false

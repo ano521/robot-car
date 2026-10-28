@@ -140,6 +140,31 @@ $WS/src/vl_locate/config/SimHei.ttf
 $WS/src/TTS_audio/speaker/speaker_5_girl.pth
 EOF
 
+OBJ_DIR="$WS/src/abot_find/object"
+OBJ_COUNT=$(find "$OBJ_DIR" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) 2>/dev/null | wc -l)
+if [ "$OBJ_COUNT" -gt 0 ]; then
+  ok "模板匹配图片 $OBJ_COUNT 张 -> $OBJ_DIR"
+else
+  no "模板匹配图片为空 -> $OBJ_DIR"
+fi
+
+if [ -d "$WS/runtime" ] && [ -w "$WS/runtime" ]; then
+  ok "find_object_2d 运行配置目录可写 -> $WS/runtime"
+else
+  no "缺少可写运行配置目录 -> $WS/runtime"
+fi
+
+for s in find_object.py ar_tracker.py vision_tracker.py find_object_move.py ar_tracker_move.py; do
+  if [ -f "$WS/src/robot_slam/scripts/$s" ]; then
+    ok "视觉脚本存在 -> robot_slam/scripts/$s"
+    if [ ! -x "$WS/src/robot_slam/scripts/$s" ]; then
+      warn "缺少执行位 -> chmod +x src/robot_slam/scripts/$s"
+    fi
+  else
+    no "视觉脚本缺失 -> robot_slam/scripts/$s"
+  fi
+done
+
 hr; echo " 6/7  车内路径（代码里写死、我改不了的）"; hr
 echo "  下面这些如果显示 [!!]，说明对应功能会失败："
 echo
@@ -181,6 +206,15 @@ case "$r" in
   *)           ok "$r" ; warn "解析到非预期路径，环境可能变过" ;;
 esac
 echo "      （'rospack find abot_find' 失败是正常的：abot_find 只是目录名，不是包名）"
+
+echo
+echo "  [C] ar_track_alvar 包"
+r=$(rospack find ar_track_alvar 2>/dev/null)
+if [ -n "$r" ]; then
+  ok "$r"
+else
+  no "ar_track_alvar 找不到 --> AR 标签识别无法启动"
+fi
 
 hr; echo " 7/7  当前 ROS 运行状态"; hr
 if pgrep -x rosmaster >/dev/null 2>&1; then

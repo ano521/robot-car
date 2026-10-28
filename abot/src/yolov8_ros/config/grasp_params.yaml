@@ -1,0 +1,69 @@
+# ============================================================
+#  grasp_once.py 的参数（2026-10-25）
+#
+#  这份是"起步值"，不是"调好的值"。带 ★ 的几项必须上机后按实测定下来，
+#  在那之前它们只是厂商 grab.py 的原始数值搬过来的。
+#
+#  用法：roslaunch yolov8_ros grasp_once.launch
+#        roslaunch yolov8_ros grasp_once.launch dry_run:=true   # 只算不发
+# ============================================================
+
+# ---------- 行为 ----------
+dry_run: false              # true = 不发串口、不动机械臂，只打印"打算发什么"
+force: false                # true = 忽略"别的抓取节点还占着串口"的检查
+
+# ---------- 选目标 ----------
+select: center              # center = 离画面中心最近 | largest = 面积最大 | arm = 离臂最近
+target_class: ""            # 空 = 任意类；也可写 "bottle" 或 "bottle,cup"
+min_area_px: 400            # 框面积小于这个（像素²）忽略，滤掉远处的噪声框
+img_w: 640                  # Detection 消息里没有画面尺寸，得在这里告诉节点
+img_h: 480
+det_max_age: 0.8            # 只用 0.8 秒内的检测结果（防止用旧框抓空）
+
+# ---------- 抓取动作（单位 mm / ms）----------
+z_grasp: 10.0               # 抓取高度。★ 与厂商 grab.py 一致，按实物调
+z_lift: 150.0               # 抬起高度。★ 厂商用 150
+offset_x: 0.0               # 机械臂 X 微调（往右为正）
+offset_x_left: -6.0         # ★ X<=0 时额外叠加的偏置（厂商 grab.py 的 -6mm）
+offset_y: 20.0              # ★ 厂商 grab.py 的 +20mm（往远 2cm）
+# ⚠️ 这一项千万别写成 null / ~ —— roslaunch 传参不支持 None，会直接崩：
+#    TypeError: cannot marshal None unless allow_none is enabled
+# 需要它时再取消注释并填数字（-45 = 更平的姿态，货架抓取更安全；不填 = 厂商行为，取最负可行角）
+# prefer_alpha: -45
+move_time: 2000             # 伸到目标的时间
+lift_time: 2000             # 抬起的时间
+settle: 0.5                 # 每个动作之后额外等多久（秒）
+
+# ---------- 放置（/put 触发；不看视觉，走到固定点张爪）----------
+put_x: 0.0                  # ★ 放物点（机械臂坐标 mm，x 右为正）
+put_y: 200.0                # ★ 前方 20cm
+put_z: 25.0                 # ★ 放下的高度（厂商 put.py 用的 25）
+
+# ---------- 夹爪 ----------
+gripper_id: 5
+gripper_open_pwm: 1200      # ★ 库里一共 4 套说法(1050/1200/1700/2100)，必须上机定
+gripper_close_pwm: 1700     # ★ 同上
+gripper_time: 1000
+verify_gripper: false       # true = 合爪后打印 #005PRAD! 回读；自动成功判据待实测基准后再启用
+verify_delta: 80            # 回读值与空夹基准差多少 tick 才算"夹到东西了"
+
+# ---------- 运动学（拿尺子量完再改）----------
+l0: 100                     # ★ 底盘面 -> 2号舵机中心轴。grab.py 用 100、arm_move.py 用 110
+l1: 105                     # 2号舵机 -> 3号舵机
+l2: 75                      # 3号舵机 -> 4号舵机
+l3: 185                     # 4号舵机 -> 爪子最高点
+
+# ---------- 安全限幅（越界直接拒绝，不钳位）----------
+limit_x_min: -140.0
+limit_x_max: 140.0
+limit_y_min: 80.0
+limit_y_max: 300.0
+limit_z_min: 0.0
+limit_z_max: 250.0
+
+# ---------- 串口 ----------
+baud: 115200                # ★ 手册默认 115200
+
+# ---------- 标定 ----------
+# 留空 = 用包里 config/grasp_calib.json；没有那个文件就回落到厂商的 4 点插值
+# calib_file: "/media/abot/999/abot/src/yolov8_ros/config/grasp_calib.json"

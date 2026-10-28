@@ -1,8 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import ConfigParser
-from log import PLOG
+import configparser
+try:
+    from .log import PLOG
+except ImportError:
+    from log import PLOG
 import os
 def getdefaultfilename():
     pass
@@ -13,16 +16,18 @@ class configer:
         self._filepath=fullfilepath
         if not os.path.isdir(os.path.dirname(fullfilepath)):
             os.makedirs(os.path.dirname(fullfilepath))
-        self._conf=ConfigParser.ConfigParser()
+        self._conf=configparser.ConfigParser()
         if os.path.isfile(fullfilepath):
             try:
-                self._conf.readfp(open(fullfilepath,"r"))
-            except Exception,e:
+                with open(fullfilepath, "r", encoding="utf-8") as config_file:
+                    self._conf.read_file(config_file)
+            except Exception as e:
                 PLOG.error("配置文件'%s'打开失败,err=%s"%(self._filepath,e))
     def save(self):
         try:
-            self._conf.write(open(self._filepath,"w"))
-        except Exception,e:
+            with open(self._filepath, "w", encoding="utf-8") as config_file:
+                self._conf.write(config_file)
+        except Exception as e:
             PLOG.error("配置文件'%s'保存失败,err=%s"%(self._filepath,e))
             
     def changeConfValue(self,section,option,value):

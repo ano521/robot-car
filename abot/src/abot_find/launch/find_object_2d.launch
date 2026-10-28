@@ -1,8 +1,8 @@
 <launch>
     <arg name="gui" default="true"/>
     <arg name="image_topic" default="/usb_cam/image_raw"/>
-    <arg name="objects_path" default="/media/abot/999/abot/src/abot_find/object"/>
-    <arg name="settings_path" default="~/.ros/find_object_2d.ini"/>
+    <arg name="objects_path" default="$(find find_object_2d)/object"/>
+    <arg name="settings_path" default="$(find find_object_2d)/../../runtime/find_object_2d.ini"/>
 
 	<!-- Nodes -->
 	<node name="find_object_2d" pkg="find_object_2d" type="find_object_2d">
@@ -12,5 +12,7 @@
 		<param name="settings_path" value="$(arg settings_path)" type="str"/>
 	</node>
 
-	<node name="print_objects_detected" pkg="find_object_2d" type="print_objects_detected" output="screen" />
+	<node name="print_objects_detected" pkg="find_object_2d" type="print_objects_detected" output="screen">
+		<remap from="image" to="$(arg image_topic)"/>
+	</node>
 </launch>

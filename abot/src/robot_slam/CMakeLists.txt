@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
   actionlib_msgs
   geometry_msgs
   nav_msgs
@@ -111,7 +112,17 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES robot_slam
-  CATKIN_DEPENDS roscpp rospy std_msgs
+  CATKIN_DEPENDS
+    roscpp
+    rospy
+    std_msgs
+    sensor_msgs
+    actionlib_msgs
+    geometry_msgs
+    nav_msgs
+    tf
+    tf2_ros
+    tf_conversions
 #  DEPENDS system_lib
 )
 

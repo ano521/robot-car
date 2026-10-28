@@ -1,0 +1,41 @@
+<launch>
+  <!-- ==============================================================
+       grasp_once.launch —— 单次抓取（不含导航）
+
+       它起两样东西：
+         1) multi_yolo.launch：相机(/dev/video2) + YOLO -> /yolov8_detections
+         2) grasp_once.py    ：等 /grab 参数（或 ~trigger 服务）-> 规划 -> 动臂
+
+       和厂商 grasp.sh 的区别：**不含导航**、**不含 put**、**不按类别序列**。
+       用它是为了把"抓取"这一段单独验通，再谈接回 nav.py。
+
+       用法：
+         roslaunch yolov8_ros grasp_once.launch                  # 真抓（要 /dev/arm）
+         roslaunch yolov8_ros grasp_once.launch dry_run:=true    # 只算不发，先看这个
+         roslaunch yolov8_ros grasp_once.launch with_camera:=false   # 相机已单独起着
+
+       触发：
+         rosservice call /grasp_once/trigger
+         或 rosparam set /grab 1
+
+       ⚠️ 跑之前先：
+          ./killall.sh                     # 清残留（尤其旧的 grab.py/put.py）
+          ./7-grasp-check.sh               # 看 /dev/arm、相机话题、代价地图三层
+       ============================================================== -->
+
+  <arg name="dry_run" default="false"
+       doc="true = 不发串口、不动机械臂，只把要发的指令算出来打印"/>
+  <arg name="video" default="/dev/video2"
+       doc="/dev/video0 = 机械臂摄像头, /dev/video2 = 前置(手册第10章). 现场可切"/>
+  <arg name="with_camera" default="true"
+       doc="false = 相机/YOLO 已经单独起着，这里不重复起"/>
+
+  <include if="$(arg with_camera)" file="$(find yolov8_ros)/launch/multi_yolo.launch">
+    <arg name="video" value="$(arg video)"/>
+  </include>
+
+  <node name="grasp_once" pkg="yolov8_ros" type="grasp_once.py" output="screen">
+    <rosparam file="$(find yolov8_ros)/config/grasp_params.yaml" command="load"/>
+    <param name="dry_run" value="$(arg dry_run)"/>
+  </node>
+</launch>

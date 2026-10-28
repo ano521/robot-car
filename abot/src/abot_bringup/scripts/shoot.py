@@ -5,24 +5,31 @@ import serial
 import time
 from std_msgs.msg import String
 
-# 定义串口参数
-# 2026-10-28 修：原来这一行是 serial.Serial(port= baudrate=baudRate, ...)，
-# 等号后面直接跟了下一个关键字参数 —— 少一个值，整份文件语法都不成立（D 系列）。
-# 现在恢复成原来被注释掉的 serialPort 变量。⚠️ /dev/ttyUSB2 是厂商原值，
-# 本车只有 abot_driver(ttyUSB1)、rplidar(ttyUSB0) 两个 udev 别名，
-# 射击模块接的是哪个口要上机用 ls /dev/ttyUSB* 现看，别照抄。
-serialPort = "/dev/ttyUSB2"
-baudRate = 9600
-
-# 初始化串口
-ser = serial.Serial(port=serialPort, baudrate=baudRate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE)
-
 # 定义机器人射击类
 class AbotShoot:
     def __init__(self):
         # 给节点命名
         rospy.init_node('abot_shoot', anonymous=False)
-        
+
+        # Keep the actuator disabled unless the launch caller explicitly names
+        # the serial device.  This avoids commanding an unknown USB device.
+        self.serial_port = rospy.get_param('~serial_port', '')
+        self.baud_rate = rospy.get_param('~baud_rate', 9600)
+        self.ser = None
+        if self.serial_port:
+            try:
+                self.ser = serial.Serial(
+                    port=self.serial_port,
+                    baudrate=self.baud_rate,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=1.0,
+                )
+            except serial.SerialException as exc:
+                rospy.logerr('Cannot open shoot serial port %s: %s', self.serial_port, exc)
+        else:
+            rospy.logwarn('Shoot actuator is disabled: set ~serial_port to enable it.')
+
         # 订阅 /shoot 话题
         rospy.Subscriber('/shoot', String, self.shoot_continue)
         
@@ -30,11 +37,14 @@ class AbotShoot:
         
     # 处理射击命令的回调函数
     def shoot_continue(self, msg):
+        if self.ser is None:
+            rospy.logerr('Ignoring /shoot command because no actuator serial port is open.')
+            return
+
         # 发送射击指令
-        ser.write(b'\x55\x01\x12\x00\x00\x00\x01\x69')
-        print(0)
+        self.ser.write(b'\x55\x01\x12\x00\x00\x00\x01\x69')
         time.sleep(0.05)
-        ser.write(b'\x55\x01\x11\x00\x00\x00\x01\x68')
+        self.ser.write(b'\x55\x01\x11\x00\x00\x00\x01\x68')
 
 if __name__ == '__main__':
     try:

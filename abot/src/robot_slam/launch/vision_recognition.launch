@@ -1,0 +1,67 @@
+<launch>
+    <arg name="start_camera" default="false"/>
+    <arg name="camera_device" default="/dev/video0"/>
+    <arg name="camera_image_topic" default="/usb_cam/image_raw"/>
+    <arg name="camera_info_topic" default="/usb_cam/camera_info"/>
+    <arg name="image_width" default="640"/>
+    <arg name="image_height" default="480"/>
+    <arg name="pixel_format" default="yuyv"/>
+    <arg name="framerate" default="30"/>
+
+    <arg name="enable_template" default="true"/>
+    <arg name="enable_ar" default="true"/>
+    <arg name="find_object_gui" default="false"/>
+    <arg name="objects_path" default="$(find find_object_2d)/object"/>
+    <arg name="settings_path" default="$(find find_object_2d)/../../runtime/find_object_2d.ini"/>
+    <arg name="target_object_id" default="-1"/>
+
+    <arg name="marker_size" default="4.4"/>
+    <arg name="max_new_marker_error" default="0.08"/>
+    <arg name="max_track_error" default="0.2"/>
+    <arg name="output_frame" default="camera_link"/>
+    <arg name="target_marker_id" default="-1"/>
+
+    <group if="$(arg start_camera)">
+        <include file="$(find cam_track)/launch/usb_cam_with_calibration.launch">
+            <arg name="video_device" value="$(arg camera_device)"/>
+            <arg name="image_width" value="$(arg image_width)"/>
+            <arg name="image_height" value="$(arg image_height)"/>
+            <arg name="pixel_format" value="$(arg pixel_format)"/>
+            <arg name="framerate" value="$(arg framerate)"/>
+        </include>
+    </group>
+
+    <group if="$(arg enable_template)">
+        <include file="$(find find_object_2d)/launch/find_object_2d.launch">
+            <arg name="gui" value="$(arg find_object_gui)"/>
+            <arg name="image_topic" value="$(arg camera_image_topic)"/>
+            <arg name="objects_path" value="$(arg objects_path)"/>
+            <arg name="settings_path" value="$(arg settings_path)"/>
+        </include>
+
+        <node name="template_object_reporter"
+              pkg="robot_slam"
+              type="find_object.py"
+              output="screen">
+            <param name="target_object_id" value="$(arg target_object_id)"/>
+        </node>
+    </group>
+
+    <group if="$(arg enable_ar)">
+        <include file="$(find ar_track_alvar)/launch/abot_indiv_no_kinect.launch">
+            <arg name="marker_size" value="$(arg marker_size)"/>
+            <arg name="max_new_marker_error" value="$(arg max_new_marker_error)"/>
+            <arg name="max_track_error" value="$(arg max_track_error)"/>
+            <arg name="cam_image_topic" value="$(arg camera_image_topic)"/>
+            <arg name="cam_info_topic" value="$(arg camera_info_topic)"/>
+            <arg name="output_frame" value="$(arg output_frame)"/>
+        </include>
+
+        <node name="ar_tracker_reporter"
+              pkg="robot_slam"
+              type="ar_tracker.py"
+              output="screen">
+            <param name="target_marker_id" value="$(arg target_marker_id)"/>
+        </node>
+    </group>
+</launch>

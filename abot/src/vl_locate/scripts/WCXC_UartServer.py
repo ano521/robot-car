@@ -6,22 +6,28 @@ Copyright (c) [Zachary]
 Author:Zachary
 company:WCXC
 '''
+import os
 import serial
 import time
 import threading
 
 class WCXC_UART(object):
     
-    def __init__(self, baud=115200):
+    def __init__(self, baud=115200, port=None):
         #self.ser= ''                                             # 串口2
         self.baud = baud                                            # 波特率
+        # ★ 2026-10-25：端口可覆盖。默认仍是 /dev/arm（跟厂商一致），
+        #   但 udev 别名万一没建，可以不改车内 udev（红线），用环境变量绕：
+        #       export ABOT_ARM_PORT=/dev/ttyUSB2
+        if port is None:
+            port = os.environ.get('ABOT_ARM_PORT', '/dev/arm')
         self.mode = 0
         self.uart_get_ok = 0
         self.uart_receive_buf = ''
         self.uart_receive_str = ''
         
         self.ser = serial.Serial(
-            port='/dev/arm',
+            port=port,
             baudrate=self.baud,
             bytesize=serial.EIGHTBITS,
             parity=serial.PARITY_NONE,

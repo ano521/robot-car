@@ -1,4 +1,22 @@
 <launch>
-<node name="yolov8_ros_node" pkg="yolov8_ros" type="multi_yolo.py" output="screen"/>
-<include file="$(find yolov8_ros)/launch/usb_cam.launch"/>
+  <!-- ==============================================================
+       2026-10-25 修 G1：YOLO 订阅的相机话题和相机实际发布的对不上
+
+         usb_cam.launch 里节点名是 usb_cam2，图像落在 /usb_cam2/image_raw；
+         而 multi_yolo.py 第 14 行订阅的是 /usb_cam/image_raw
+         （那是 cam_track 的 video0，grasp.sh 里根本不起它）。
+         结果：/yolov8_detections 一条都不出 -> /grab 永远等不到目标 ->
+               nav.py 卡在第一个抓取点，不动、不报错、不退出。
+
+       在这里 remap，而不是改 multi_yolo.py，是因为 sam / track /
+       region_counter / vl_locate/server.py 也都订阅 /usb_cam/image_raw，
+       那几个是配 cam_track(video0) 用的，改脚本会把它们一起改坏。
+       ============================================================== -->
+  <arg name="video" default="/dev/video2"/>
+  <node name="yolov8_ros_node" pkg="yolov8_ros" type="multi_yolo.py" output="screen">
+    <remap from="/usb_cam/image_raw" to="/usb_cam2/image_raw"/>
+  </node>
+  <include file="$(find yolov8_ros)/launch/usb_cam.launch">
+    <arg name="video" value="$(arg video)"/>
+  </include>
 </launch>

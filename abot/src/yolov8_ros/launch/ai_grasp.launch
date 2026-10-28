@@ -1,0 +1,62 @@
+<launch>
+  <!-- ==============================================================
+       ai_grasp.launch —— 模板匹配 → 抓取（替代 YOLO 那条链）
+
+       链路：
+         usb_cam2(相机) → find_object_2d(ORB 模板匹配) → /objects
+              → ai_locate(翻译成 Detection) → /yolov8_detections
+              → grasp_once(选目标 + 逆解 + 动臂)
+
+       为什么用它：物块是"上面贴图案、随手摆"的，会转角度；
+       ORB 特征匹配天生抗旋转/缩放，比 YOLO 的 COCO 类别合适得多。
+
+       用法：
+         # 1) 第一次：进 GUI 截图做模板（三个物块各做一次）
+         roslaunch yolov8_ros ai_grasp.launch gui:=true
+
+         # 2) 之后：正常跑，指定要抓几号模板
+         roslaunch yolov8_ros ai_grasp.launch target_id:=1
+
+         # 3) 只看认到了什么（不开抓取节点时）
+         rostopic echo /ai_locate/ids -n1
+
+       模板目录：src/abot_find/object_task/   （1.png / 2.png … / 9.png）
+       ⚠️ 不要用 src/abot_find/object/ —— 那里有厂商 200 多张图，又慢又容易认错。
+       ============================================================== -->
+
+  <arg name="video" default="/dev/video2"
+       doc="/dev/video0 = 机械臂摄像头, /dev/video2 = 前置（手册第10章）"/>
+  <arg name="gui" default="false" doc="true = 打开 find_object_2d 的 GUI，用来截图做模板"/>
+  <arg name="target_id" default="-1"
+       doc="只转发这个模板号；-1 = 全部转发（grasp_once 再按 target_class 过滤）"/>
+  <!-- 不传 target_class：空字符串在 roslaunch 里会被 yaml 解析成 None，
+       触发 "cannot marshal None unless allow_none is enabled" 直接崩。
+       要只抓某一号，用 target_id 在上游过滤（ai_locate 只转发那个号）。 -->
+  <arg name="dry_run" default="false" doc="true = 只算不动臂"/>
+  <arg name="objects_path" default="$(find find_object_2d)/object_task"/>
+
+  <!-- 相机 -->
+  <include file="$(find yolov8_ros)/launch/usb_cam.launch">
+    <arg name="video" value="$(arg video)"/>
+  </include>
+
+  <!-- 模板匹配 -->
+  <node name="find_object_2d" pkg="find_object_2d" type="find_object_2d" output="screen">
+    <remap from="image" to="/usb_cam2/image_raw"/>
+    <param name="gui" value="$(arg gui)"/>
+    <param name="objects_path" value="$(arg objects_path)"/>
+    <!-- 别让它写 /home/abot（红线） -->
+    <param name="settings_path" value="/media/abot/999/abot/_ros/find_object_2d.ini"/>
+  </node>
+
+  <!-- 翻译成 Detection -->
+  <node name="ai_locate" pkg="yolov8_ros" type="ai_locate.py" output="screen">
+    <param name="only_id" value="$(arg target_id)"/>
+  </node>
+
+  <!-- 抓取 -->
+  <node name="grasp_once" pkg="yolov8_ros" type="grasp_once.py" output="screen">
+    <rosparam file="$(find yolov8_ros)/config/grasp_params.yaml" command="load"/>
+    <param name="dry_run" value="$(arg dry_run)"/>
+  </node>
+</launch>

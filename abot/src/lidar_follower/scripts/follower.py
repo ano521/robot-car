@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import time 
@@ -20,8 +20,8 @@ class Follower:
         rospy.on_shutdown(self.shutdown)
 
     def positionCallback(self, point):
-        if(not(self.active)):
-            return #if we are not active we will return imediatly without doing anything
+        if not self.active:
+            return  # Do not move until a caller explicitly enables the follower.
 
         angleX = point.x
         angleY = point.y
@@ -67,13 +67,12 @@ class simplePID:
         if(np.size(current_value) != np.size(self.setPoint)):
             raise TypeError('current_value and target do not have the same shape')
         if(self.timeOfLastCall is None):
-            # the PID was called for the first time. we don't know the deltaT yet
-            # no controll signal is applied
-            self.timeOfLastCall = time.time()
+            # The first call establishes the clock without applying control.
+            self.timeOfLastCall = time.monotonic()
             return np.zeros(np.size(current_value))
         error = self.setPoint - current_value
         P = error
-        current_time = time.time()
+        current_time = time.monotonic()
         deltaT = (current_time - self.timeOfLastCall)
         self.integrator = self.integrator + (error*deltaT)
         I = self.integrator
