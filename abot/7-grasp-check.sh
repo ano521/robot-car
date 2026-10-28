@@ -118,11 +118,21 @@ if [ -e /dev/arm ]; then
     warn "没有 udevadm，跳过"
   fi
   echo
-  echo "  当前用户能不能开它（dialout 组）:"
-  if groups 2>/dev/null | grep -qw dialout; then
-    ok "在 dialout 组里"
+  echo "  当前用户能不能开它（2026-10-28 改：按真实权限位判，不再查 dialout 组）:"
+  echo "    为什么改：本车 udev 规则把 ttyUSB* 设成 0666，abot 不在 dialout 组也能开，"
+  echo "    旧判据只查 groups，2026-10-28 误报了一次，让人白紧张。"
+  TARGET=$(readlink -f /dev/arm 2>/dev/null)
+  if [ -n "$TARGET" ] && [ -e "$TARGET" ]; then
+    MODE=$(stat -c '%a' "$TARGET" 2>/dev/null)
+    OWN=$(stat -c '%U:%G' "$TARGET" 2>/dev/null)
+    if [ -r "$TARGET" ] && [ -w "$TARGET" ]; then
+      ok "$TARGET  $OWN  mode=$MODE  —— 当前用户可读写（不需要 dialout 组）"
+    else
+      no "$TARGET  $OWN  mode=$MODE  —— 当前用户不可读写"
+      warn "只有在这种情况下才需要考虑组权限；加组属于改车内配置，按规矩不改"
+    fi
   else
-    no "不在 dialout 组 —— 打开串口会 Permission denied（车内账户配置，按规矩不改）"
+    warn "读不到 /dev/arm 的真实设备节点，跳过权限判定"
   fi
   echo
   echo "  谁正占着 /dev/arm（应当为空；有输出说明抓取节点还在跑）:"
