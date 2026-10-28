@@ -35,6 +35,10 @@
   <arg name="n_features" default="600"/>
   <arg name="nndr" default="0.75"/>
   <arg name="min_inliers" default="12"/>
+  <!-- 模板缩放档位。1.0 = 只认原尺寸（快，25Hz）；
+       要认画面里很小（<150px）的物块再加档：scales:=1.0,0.5,0.25（约 8Hz）。
+       注意：多尺度救不了"糊"（失焦），只解决"小"。调焦阶段保持 1.0。 -->
+  <arg name="scales" default="1.0"/>
 
   <!-- 相机（与 ai_grasp.launch 完全一样） -->
   <include file="$(find yolov8_ros)/launch/usb_cam.launch">
@@ -47,6 +51,7 @@
     <param name="n_features" value="$(arg n_features)"/>
     <param name="nndr" value="$(arg nndr)"/>
     <param name="min_inliers" value="$(arg min_inliers)"/>
+    <param name="scales" value="$(arg scales)"/>
     <!-- 相机把图发在 /usb_cam2/image_raw（节点名 usb_cam2，设备由 video 参数决定） -->
     <param name="image_topic" value="/usb_cam2/image_raw"/>
     <param name="objects_topic" value="/objects"/>
