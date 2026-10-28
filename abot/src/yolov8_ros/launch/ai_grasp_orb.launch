@@ -1,0 +1,68 @@
+<launch>
+  <!-- ==============================================================
+       ai_grasp_orb.launch —— 和 ai_grasp.launch 完全同一条链，
+       只把 C++ 的 find_object_2d 换成 Python 的 template_orb。
+
+       为什么要这个变体（2026-10-28 实测结论）：
+         本机 Jetson 同时装了两套 OpenCV（cv_bridge 用 4.2，libfind_object_2d.so 用 4.5），
+         同名符号冲突：
+             find_object_2d 用 SIFT -> cv::resize 绑到 4.2 -> SIGSEGV
+             find_object_2d 用 ORB  -> 4.2 的对象交回 4.5 代码 -> FATAL detector_ != 0
+         换 Python 的 cv2 之后不存在 C++ 对象跨界，问题消失。
+         详见 交接日志-2026-10-28.md 第 8 节。
+
+       链路（和原版一致）：
+         usb_cam2 -> template_orb -> /objects -> ai_locate -> /yolov8_detections -> grasp_once
+
+       用法：
+         ./ai.sh v0 dry orb          # dry_run + Python 匹配器
+         ./ai.sh v0 orb dbg          # 额外发 /template_orb/debug_image，用 rqt_image_view 看框
+
+       ⚠️ 和 ai_grasp.launch 不要同时起（都用 /objects 和 /usb_cam2）
+       ============================================================== -->
+
+  <arg name="video" default="/dev/video2"
+       doc="/dev/video0 = 机械臂摄像头, /dev/video2 = 前置（手册第10章）"/>
+  <!-- 保留这个参数只是为了 ai.sh 能不加区分地传 gui:=true；
+       Python 节点没有 GUI，看画面请用 dbg + rqt_image_view -->
+  <arg name="gui" default="false" doc="（本文件忽略此参数）"/>
+  <arg name="target_id" default="-1"
+       doc="只转发这个模板号；-1 = 全部转发（ai_locate 里按 only_id 过滤）"/>
+  <arg name="dry_run" default="false" doc="true = 只算不动臂（grasp_once 用假串口）"/>
+  <arg name="objects_path" default="$(find find_object_2d)/object_task"/>
+  <arg name="dbg" default="false" doc="true = 发布 /template_orb/debug_image（带绿框）"/>
+
+  <arg name="n_features" default="600"/>
+  <arg name="nndr" default="0.75"/>
+  <arg name="min_inliers" default="12"/>
+
+  <!-- 相机（与 ai_grasp.launch 完全一样） -->
+  <include file="$(find yolov8_ros)/launch/usb_cam.launch">
+    <arg name="video" value="$(arg video)"/>
+  </include>
+
+  <!-- 模板匹配（Python 版，替代 find_object_2d） -->
+  <node name="template_orb" pkg="yolov8_ros" type="template_orb.py" output="screen">
+    <param name="objects_path" value="$(arg objects_path)"/>
+    <param name="n_features" value="$(arg n_features)"/>
+    <param name="nndr" value="$(arg nndr)"/>
+    <param name="min_inliers" value="$(arg min_inliers)"/>
+    <!-- 相机把图发在 /usb_cam2/image_raw（节点名 usb_cam2，设备由 video 参数决定） -->
+    <param name="image_topic" value="/usb_cam2/image_raw"/>
+    <param name="objects_topic" value="/objects"/>
+    <param name="max_objects" value="3"/>
+    <param name="min_area_px" value="400.0"/>
+    <param name="debug_image_topic" value="/template_orb/debug_image" if="$(arg dbg)"/>
+  </node>
+
+  <!-- 翻译成 Detection（与 ai_grasp.launch 完全一样，一行没改） -->
+  <node name="ai_locate" pkg="yolov8_ros" type="ai_locate.py" output="screen">
+    <param name="only_id" value="$(arg target_id)"/>
+  </node>
+
+  <!-- 抓取（与 ai_grasp.launch 完全一样） -->
+  <node name="grasp_once" pkg="yolov8_ros" type="grasp_once.py" output="screen">
+    <rosparam file="$(find yolov8_ros)/config/grasp_params.yaml" command="load"/>
+    <param name="dry_run" value="$(arg dry_run)"/>
+  </node>
+</launch>
